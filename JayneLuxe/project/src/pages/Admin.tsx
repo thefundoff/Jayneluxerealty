@@ -312,34 +312,39 @@ export const Admin = () => {
     }
   };
 
-  const handleEdit = async (property: Database['public']['Tables']['properties']['Row']) => {
-    setForm({
-      title: property.title || '',
-      description: property.description || '',
-      price: property.price?.toString() || '',
-      bedrooms: property.bedrooms?.toString() || '3',
-      bathrooms: property.bathrooms?.toString() || '2',
-      square_feet: property.square_feet?.toString() || '2500',
-      location: property.location || '',
-      city: property.city || '',
-      state: property.state || '',
-      property_type: property.property_type || 'house',
-      year_built: property.year_built?.toString() || '',
-      parking_spaces: property.parking_spaces?.toString() || '2',
-      has_pool: property.has_pool ?? false,
-      has_garden: property.has_garden ?? false,
-      latitude: property.latitude?.toString() || '',
-      longitude: property.longitude?.toString() || '',
-      imageUrl: '',
-      property_category: property.property_category || '',
-      area_type: property.area_type || '',
-      discount_percentage: property.discount_percentage?.toString() || '',
-      discount_price: property.discount_price?.toString() || '',
-      discount_end_date: property.discount_end_date || '',
-    });
-    setEditingId(property.id);
-    setTab('add');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const handleEdit = (property: Database['public']['Tables']['properties']['Row']) => {
+    try {
+      setForm({
+        title: property.title || '',
+        description: property.description || '',
+        price: property.price?.toString() || '',
+        bedrooms: property.bedrooms?.toString() || '3',
+        bathrooms: property.bathrooms?.toString() || '2',
+        square_feet: property.square_feet?.toString() || '2500',
+        location: property.location || '',
+        city: property.city || '',
+        state: property.state || '',
+        property_type: property.property_type || 'house',
+        year_built: property.year_built?.toString() || '',
+        parking_spaces: property.parking_spaces?.toString() || '2',
+        has_pool: property.has_pool ?? false,
+        has_garden: property.has_garden ?? false,
+        latitude: property.latitude?.toString() || '',
+        longitude: property.longitude?.toString() || '',
+        imageUrl: '',
+        property_category: property.property_category || '',
+        area_type: property.area_type || '',
+        discount_percentage: property.discount_percentage?.toString() || '',
+        discount_price: property.discount_price?.toString() || '',
+        discount_end_date: property.discount_end_date || '',
+      });
+      setEditingId(property.id);
+      setTab('add');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      console.error('Edit error:', err);
+      setMessage('Failed to open edit form: ' + (err instanceof Error ? err.message : String(err)));
+    }
   };
 
   const handleCancelEdit = () => {
