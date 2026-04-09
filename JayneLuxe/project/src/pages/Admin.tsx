@@ -33,10 +33,9 @@ interface PropertyForm {
   discount_end_date: string;
 }
 
-const ADMIN_PASSWORD = 'JayneLuxe2024';
-
 export const Admin = () => {
-  const [auth, setAuth] = useState<AdminAuthState>({ isAuthenticated: false, isLoading: false });
+  const [auth, setAuth] = useState<AdminAuthState>({ isAuthenticated: false, isLoading: true });
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [tab, setTab] = useState<'add' | 'list'>('add');
@@ -73,20 +72,36 @@ export const Admin = () => {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setAuth({ isAuthenticated: !!session, isLoading: false });
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setAuth({ isAuthenticated: !!session, isLoading: false });
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === ADMIN_PASSWORD) {
-      setAuth({ isAuthenticated: true, isLoading: false });
-      setPassword('');
-      setMessage('');
+    setAuth(prev => ({ ...prev, isLoading: true }));
+    setMessage('');
+
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      setMessage(error.message);
+      setAuth(prev => ({ ...prev, isLoading: false }));
     } else {
-      setMessage('Invalid password');
+      setEmail('');
+      setPassword('');
     }
   };
 
-  const handleLogout = () => {
-    setAuth({ isAuthenticated: false, isLoading: false });
-    setPassword('');
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
   };
 
   const fetchProperties = async () => {
@@ -446,6 +461,14 @@ export const Admin = () => {
     }
   };
 
+  if (auth.isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-[#134137] to-[#0d2d26] flex items-center justify-center">
+        <div className="text-white text-xl">Loading...</div>
+      </div>
+    );
+  }
+
   if (!auth.isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#134137] to-[#0d2d26] flex items-center justify-center p-4">
@@ -457,8 +480,23 @@ export const Admin = () => {
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
+              <label htmlFor="email" className="block text-sm font-medium text-[#134137] mb-2">
+                Email
+              </label>
+              <input
+                type="email"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
+                placeholder="Enter admin email"
+              />
+            </div>
+
+            <div>
               <label htmlFor="password" className="block text-sm font-medium text-[#134137] mb-2">
-                Admin Password
+                Password
               </label>
               <div className="relative">
                 <input
@@ -466,6 +504,7 @@ export const Admin = () => {
                   id="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  required
                   className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
                   placeholder="Enter admin password"
                 />
@@ -487,9 +526,10 @@ export const Admin = () => {
 
             <button
               type="submit"
-              className="w-full bg-[#F3CF92] text-[#134137] py-3 rounded-lg font-bold hover:bg-[#e6c07f] transition-all"
+              disabled={auth.isLoading}
+              className="w-full bg-[#F3CF92] text-[#134137] py-3 rounded-lg font-bold hover:bg-[#e6c07f] transition-all disabled:opacity-50"
             >
-              Login
+              {auth.isLoading ? 'Logging in...' : 'Login'}
             </button>
           </form>
         </div>
