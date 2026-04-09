@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Lock, LogOut, Plus, List, X, Upload, CreditCard as Edit2, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Lock, LogOut, Plus, List, X, Upload, CreditCard as Edit2, Trash2, Eye, EyeOff, Settings } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
 
@@ -38,7 +38,13 @@ export const Admin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [tab, setTab] = useState<'add' | 'list'>('add');
+  const [tab, setTab] = useState<'add' | 'list' | 'settings'>('add');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [updatingPassword, setUpdatingPassword] = useState(false);
   const [properties, setProperties] = useState<Database['public']['Tables']['properties']['Row'][]>([]);
   const [form, setForm] = useState<PropertyForm>({
     title: '',
@@ -461,6 +467,32 @@ export const Admin = () => {
     }
   };
 
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordMessage(null);
+
+    if (newPassword !== confirmPassword) {
+      setPasswordMessage({ type: 'error', text: 'Passwords do not match.' });
+      return;
+    }
+    if (newPassword.length < 6) {
+      setPasswordMessage({ type: 'error', text: 'Password must be at least 6 characters.' });
+      return;
+    }
+
+    setUpdatingPassword(true);
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setUpdatingPassword(false);
+
+    if (error) {
+      setPasswordMessage({ type: 'error', text: error.message });
+    } else {
+      setPasswordMessage({ type: 'success', text: 'Password updated successfully!' });
+      setNewPassword('');
+      setConfirmPassword('');
+    }
+  };
+
   if (auth.isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#134137] to-[#0d2d26] flex items-center justify-center">
@@ -575,6 +607,17 @@ export const Admin = () => {
           >
             <List className="w-5 h-5" />
             <span>All Properties</span>
+          </button>
+          <button
+            onClick={() => setTab('settings')}
+            className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-bold transition-all ${
+              tab === 'settings'
+                ? 'bg-[#F3CF92] text-[#134137]'
+                : 'bg-white text-[#134137] border-2 border-gray-300 hover:border-[#F3CF92]'
+            }`}
+          >
+            <Settings className="w-5 h-5" />
+            <span>Settings</span>
           </button>
         </div>
 
@@ -1070,6 +1113,70 @@ export const Admin = () => {
                 No properties found
               </div>
             )}
+          </div>
+        )}
+
+        {tab === 'settings' && (
+          <div className="bg-white rounded-xl shadow-lg p-8 max-w-md">
+            <h2 className="text-2xl font-bold text-[#134137] mb-6">Change Password</h2>
+
+            <form onSubmit={handleChangePassword} className="space-y-5">
+              <div>
+                <label className="block text-sm font-medium text-[#134137] mb-2">New Password</label>
+                <div className="relative">
+                  <input
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
+                    placeholder="Enter new password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(prev => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#134137] transition-colors"
+                  >
+                    {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#134137] mb-2">Confirm New Password</label>
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    className="w-full px-4 py-3 pr-12 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
+                    placeholder="Confirm new password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(prev => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-[#134137] transition-colors"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              {passwordMessage && (
+                <div className={`p-3 rounded-lg text-sm ${passwordMessage.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  {passwordMessage.text}
+                </div>
+              )}
+
+              <button
+                type="submit"
+                disabled={updatingPassword}
+                className="w-full bg-[#F3CF92] text-[#134137] py-3 rounded-lg font-bold hover:bg-[#e6c07f] transition-all disabled:opacity-50"
+              >
+                {updatingPassword ? 'Updating...' : 'Update Password'}
+              </button>
+            </form>
           </div>
         )}
 
