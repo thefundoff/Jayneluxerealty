@@ -207,10 +207,6 @@ export const Home = () => {
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-full flex items-center z-10">
           <div className="max-w-2xl w-full">
 
-            <p className="animate-fade-in delay-100 text-sm font-semibold tracking-[0.25em] uppercase text-[#F3CF92] mb-4">
-              Jayne Luxe Realty
-            </p>
-
             <h1 className="animate-fade-in-up delay-200 text-3xl md:text-[2.6rem] font-bold mb-4 leading-snug">
               Selling Luxury Homes &amp; Properties
               <span className="block text-[#F3CF92] mt-1">Where Peace of Mind</span>
