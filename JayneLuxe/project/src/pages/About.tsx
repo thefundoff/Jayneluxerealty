@@ -31,7 +31,7 @@ export const About = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="bg-[#134137] text-white py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-4">About JayneLuxe</h1>
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">About Jayne Luxe</h1>
           <p className="text-xl text-gray-300 max-w-3xl mx-auto">
             Your trusted partner in finding premium real estate properties across Nigeria's most desirable locations.
           </p>
