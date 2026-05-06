@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+﻿import { useState, useRef, useEffect, useCallback } from 'react';
 import { X, ChevronLeft, ChevronRight, RotateCcw, ZoomIn, ZoomOut, Maximize2, Play, Pause } from 'lucide-react';
 
 interface VirtualTour3DProps {

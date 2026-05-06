@@ -1,6 +1,6 @@
 import { useState, useEffect, ReactNode } from 'react';
 
-export type Route = 'home' | 'property' | 'contact' | 'admin' | 'about';
+export type Route = 'home' | 'property' | 'properties' | 'contact' | 'admin' | 'about';
 
 export interface RouteParams {
   propertyId?: string;
@@ -20,6 +20,9 @@ export const useRouter = () => {
         const propertyId = hash.split('/')[2];
         setCurrentRoute('property');
         setParams({ propertyId });
+      } else if (hash === '/properties') {
+        setCurrentRoute('properties');
+        setParams({});
       } else if (hash === '/contact') {
         setCurrentRoute('contact');
         setParams({});

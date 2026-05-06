@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { Users, Target, Award, Heart, Shield, Home, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export const About = () => {
@@ -270,6 +270,121 @@ evolving real estate landscape.:
           </div>
         </div>
 
+        {/* ── OUR STORY ─────────────────────────────────────────── */}
+        <div className="mb-20">
+          <div className="grid md:grid-cols-2 gap-16 items-center">
+            <div>
+              <p className="text-sm font-semibold tracking-[0.25em] uppercase text-[#134137] mb-3">Who We Are</p>
+              <h2 className="text-4xl font-bold text-[#134137] mb-6">Our Story</h2>
+              <p className="text-gray-600 text-lg leading-relaxed mb-5">
+                JLR was built on a simple belief: real estate should be guided, not pushed.
+              </p>
+              <p className="text-gray-600 text-lg leading-relaxed mb-5">
+                In a market where pressure selling is common, we chose a different approach — one rooted in transparency, strategy, and long-term value.
+              </p>
+              <p className="text-gray-600 text-lg leading-relaxed">
+                We prioritize informed decisions over quick transactions, ensuring every client walks away confident in their move.
+              </p>
+            </div>
+
+            <div className="bg-[#134137] rounded-2xl p-10 text-white relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-40 h-40 rounded-full border border-[#F3CF92]/10 translate-x-16 -translate-y-16 pointer-events-none" />
+              <div className="absolute bottom-0 left-0 w-32 h-32 rounded-full border border-[#F3CF92]/10 -translate-x-10 translate-y-10 pointer-events-none" />
+              <div className="relative z-10">
+                <span className="text-[#F3CF92] text-6xl font-serif leading-none">"</span>
+                <p className="font-display text-xl italic leading-relaxed text-white/90 -mt-4 mb-6">
+                  Real estate should be guided, not pushed. We chose transparency, strategy, and long-term value — always.
+                </p>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-0.5 bg-[#F3CF92]" />
+                  <span className="text-[#F3CF92] font-semibold text-sm tracking-widest uppercase">Jayne Luxe Realty</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── OUR NETWORK ───────────────────────────────────────── */}
+        <div className="mb-20">
+          <div className="text-center mb-12">
+            <p className="text-sm font-semibold tracking-[0.25em] uppercase text-[#134137] mb-3">Connections That Count</p>
+            <h2 className="text-4xl font-bold text-[#134137] mb-4">Our Network</h2>
+            <p className="text-gray-500 text-lg max-w-2xl mx-auto">
+              Our strength lies in who we work with.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 mb-10">
+            {[
+              {
+                icon: Shield,
+                title: 'Trusted Developers',
+                body: 'We partner only with developers who meet our standards for quality, timely delivery, and genuine investment value.',
+              },
+              {
+                icon: Users,
+                title: 'Legal & Property Experts',
+                body: 'Our legal and property expert network ensures clients receive full protection and proper documentation at every stage.',
+              },
+              {
+                icon: Award,
+                title: 'Access & Opportunity',
+                body: 'Through our network, clients gain access to opportunities and protections that go far beyond what the open market offers.',
+              },
+            ].map(({ icon: Icon, title, body }) => (
+              <div key={title} className="bg-white rounded-2xl p-8 border border-gray-200 hover:border-[#F3CF92] hover:shadow-xl transition-all duration-300 group">
+                <div className="w-14 h-14 bg-[#F3CF92]/20 group-hover:bg-[#F3CF92]/40 rounded-xl flex items-center justify-center mb-5 transition-colors duration-300">
+                  <Icon className="w-7 h-7 text-[#134137]" />
+                </div>
+                <h3 className="text-xl font-bold text-[#134137] mb-3">{title}</h3>
+                <p className="text-gray-600 leading-relaxed">{body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ── DEVELOPER PARTNERSHIP ─────────────────────────────── */}
+        <div className="bg-[#134137] rounded-2xl overflow-hidden mb-20">
+          <div className="grid md:grid-cols-2">
+            <div className="p-12 flex flex-col justify-center">
+              <p className="text-sm font-semibold tracking-[0.25em] uppercase text-[#F3CF92]/70 mb-3">Developer Partnership</p>
+              <h2 className="text-3xl md:text-4xl font-bold text-white mb-6 leading-tight">
+                Built on Trust.<br />
+                <span className="text-[#F3CF92]">Backed by Performance.</span>
+              </h2>
+              <p className="text-white/80 text-lg leading-relaxed mb-4">
+                We collaborate with developers who meet our standards for quality, delivery, and investment value.
+              </p>
+              <p className="text-white/80 text-lg leading-relaxed mb-10">
+                Whether you're buying into a project or planning to build, we ensure you're working with the right people.
+              </p>
+              <a
+                href="#/contact"
+                className="inline-flex items-center gap-2 bg-[#F3CF92] text-[#134137] px-8 py-4 rounded-lg font-bold text-base hover:bg-[#e6c07f] transition-all hover:scale-105 shadow-lg self-start"
+              >
+                Speak to an Advisor
+              </a>
+            </div>
+
+            <div className="bg-[#F3CF92]/10 p-12 flex flex-col justify-center gap-6">
+              {[
+                { label: 'Quality Standards', desc: 'Every partner meets rigorous build and finish benchmarks before we recommend them.' },
+                { label: 'On-Time Delivery', desc: 'We vet developers on their track record of meeting timelines and commitments.' },
+                { label: 'Long-Term Returns', desc: 'Our advisory is tied to your investment performance, not just the transaction.' },
+              ].map(({ label, desc }) => (
+                <div key={label} className="flex items-start gap-4">
+                  <div className="w-3 h-3 rounded-full bg-[#F3CF92] mt-2 flex-shrink-0" />
+                  <div>
+                    <p className="text-white font-semibold mb-1">{label}</p>
+                    <p className="text-white/70 text-sm leading-relaxed">{desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* ── CLOSING CTA ───────────────────────────────────────── */}
         <div className="bg-white p-10 rounded-xl shadow-lg text-center">
           <Home className="w-16 h-16 text-[#F3CF92] mx-auto mb-6" />
           <h3 className="text-3xl font-bold text-[#134137] mb-4">Your Property Journey Starts Here</h3>

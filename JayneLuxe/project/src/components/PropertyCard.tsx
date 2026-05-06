@@ -1,4 +1,4 @@
-import { Bed, Bath, Maximize, MapPin, Tag } from 'lucide-react';
+﻿import { Bed, Bath, Maximize, MapPin, Tag } from 'lucide-react';
 import type { PropertyWithImages } from '../lib/database.types';
 import { formatPrice } from '../lib/currency';
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { ArrowLeft, Bed, Bath, Maximize, MapPin, Car, Calendar, TreePine, Waves, ChevronLeft, ChevronRight, X, Tag, Clock, Rotate3d as Rotate3D } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { formatNaira } from '../lib/currency';

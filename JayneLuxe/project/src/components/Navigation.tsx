@@ -1,5 +1,5 @@
-import { Home, Building2, Mail, Menu, Users, X } from 'lucide-react';
-import { useState } from 'react';
+﻿import { Home, Building2, Mail, Menu, Users, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
 
 interface NavigationProps {
   currentRoute: string;
@@ -7,37 +7,64 @@ interface NavigationProps {
 
 export const Navigation = ({ currentRoute }: NavigationProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
-  const handlePropertiesClick = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsMenuOpen(false);
-    if (currentRoute !== 'home') {
-      window.location.hash = '/';
-      setTimeout(() => {
-        document.getElementById('properties')?.scrollIntoView({ behavior: 'smooth' });
-      }, 100);
-    } else {
-      document.getElementById('properties')?.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
+  useEffect(() => {
+    const handleScroll = () => setIsScrolled(window.scrollY > 10);
+    handleScroll();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  // On the homepage, navbar background is transparent until the user scrolls.
+  // On all other pages the solid background is always shown.
+  const isTransparent = currentRoute === 'home' && !isScrolled;
 
   const navLinks = [
-    { href: '#/', label: 'Home', icon: Home, route: 'home', onClick: undefined as ((e: React.MouseEvent) => void) | undefined },
-    { href: '#properties', label: 'Properties', icon: Building2, route: 'properties', onClick: handlePropertiesClick },
-    { href: '#/contact', label: 'Contact', icon: Mail, route: 'contact', onClick: undefined as ((e: React.MouseEvent) => void) | undefined },
-    { href: '#/about', label: 'About Us', icon: Users, route: 'about', onClick: undefined as ((e: React.MouseEvent) => void) | undefined },
+    { href: '#/', label: 'Home', icon: Home, route: 'home' },
+    { href: '#/properties', label: 'Properties', icon: Building2, route: 'properties' },
+    { href: '#/contact', label: 'Contact', icon: Mail, route: 'contact' },
+    { href: '#/about', label: 'About Us', icon: Users, route: 'about' },
   ];
 
   return (
-    <nav className="bg-[#134137] text-white sticky top-0 z-50 shadow-lg">
+    <nav
+      className={`fixed top-0 left-0 right-0 z-50 text-white transition-all duration-500 ease-in-out
+        ${isTransparent ? 'bg-transparent shadow-none' : 'bg-[#134137] shadow-lg'}`}
+    >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
           <a href="#/" className="flex items-center space-x-3 group">
-            <img
-              src="/photo_5875219655968885966_y.jpg"
-              alt="Jayne Luxe Realty Logo"
-              className="h-16 w-32 object-cover group-hover:scale-105 transition-transform"
-            />
+            {/* Logo mark */}
+            <div className={`relative flex-shrink-0 rounded-2xl overflow-hidden transition-all duration-300
+              ring-1 ring-[#F3CF92]/25 group-hover:ring-2 group-hover:ring-[#F3CF92]/70
+              shadow-md group-hover:shadow-[0_0_18px_rgba(243,207,146,0.25)]
+              ${isTransparent ? 'ring-[#F3CF92]/40' : ''}`}
+            >
+              <img
+                src="/photo_5875219655968885966_y.jpg"
+                alt="Jayne Luxe Realty Logo"
+                className="h-14 w-14 object-cover transition-transform duration-500 group-hover:scale-110"
+              />
+            </div>
+
+            {/* Wordmark */}
+            <div className="hidden sm:flex flex-col leading-none">
+              <span className={`font-bold text-base tracking-widest transition-colors duration-300
+                ${isTransparent
+                  ? 'text-[#F3CF92] drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]'
+                  : 'text-[#F3CF92]'}`}
+              >
+                JAYNE LUXE
+              </span>
+              <span className={`text-[10px] tracking-[0.35em] mt-1 font-medium transition-colors duration-300
+                ${isTransparent
+                  ? 'text-white/80 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]'
+                  : 'text-white/70'}`}
+              >
+                REALTY
+              </span>
+            </div>
           </a>
 
           <div className="hidden md:flex items-center space-x-8">
@@ -45,10 +72,9 @@ export const Navigation = ({ currentRoute }: NavigationProps) => {
               <a
                 key={link.route}
                 href={link.href}
-                onClick={link.onClick}
-                className={`flex items-center space-x-1 px-4 py-2 rounded-lg transition-all hover:bg-[#F3CF92] hover:text-[#134137] ${
-                  currentRoute === link.route ? 'bg-[#F3CF92] text-[#134137]' : ''
-                }`}
+                className={`flex items-center space-x-1 px-4 py-2 rounded-lg transition-all hover:bg-[#F3CF92] hover:text-[#134137]
+                  ${currentRoute === link.route && !isTransparent ? 'bg-[#F3CF92] text-[#134137]' : ''}
+                  ${isTransparent ? 'drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]' : ''}`}
               >
                 <link.icon className="w-4 h-4" />
                 <span className="font-medium">{link.label}</span>
@@ -58,22 +84,24 @@ export const Navigation = ({ currentRoute }: NavigationProps) => {
 
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="md:hidden p-2 rounded-lg hover:bg-[#F3CF92] hover:text-[#134137] transition-colors"
+            className={`md:hidden p-2 rounded-lg transition-colors hover:bg-[#F3CF92] hover:text-[#134137]
+              ${isTransparent ? 'drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]' : ''}`}
           >
             {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
 
         {isMenuOpen && (
-          <div className="md:hidden pb-4 space-y-2">
+          <div
+            className={`md:hidden pb-4 space-y-2 ${isTransparent ? 'bg-black/40 backdrop-blur-sm rounded-xl px-2 mb-2' : ''}`}
+          >
             {navLinks.map((link) => (
               <a
                 key={link.route}
                 href={link.href}
-                onClick={link.onClick ?? (() => setIsMenuOpen(false))}
-                className={`flex items-center space-x-2 px-4 py-3 rounded-lg transition-all hover:bg-[#F3CF92] hover:text-[#134137] ${
-                  currentRoute === link.route ? 'bg-[#F3CF92] text-[#134137]' : ''
-                }`}
+                onClick={() => setIsMenuOpen(false)}
+                className={`flex items-center space-x-2 px-4 py-3 rounded-lg transition-all hover:bg-[#F3CF92] hover:text-[#134137]
+                  ${currentRoute === link.route && !isTransparent ? 'bg-[#F3CF92] text-[#134137]' : ''}`}
               >
                 <link.icon className="w-5 h-5" />
                 <span className="font-medium">{link.label}</span>

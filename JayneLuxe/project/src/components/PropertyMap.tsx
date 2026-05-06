@@ -1,4 +1,4 @@
-import { MapPin } from 'lucide-react';
+﻿import { MapPin } from 'lucide-react';
 import type { Property } from '../lib/database.types';
 
 interface PropertyMapProps {

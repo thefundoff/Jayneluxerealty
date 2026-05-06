@@ -1,4 +1,4 @@
-import { Facebook, Twitter, X, Instagram, Linkedin, Phone, Mail, MapPin } from 'lucide-react';
+﻿import { Facebook, Twitter, X, Instagram, Linkedin, Phone, Mail, MapPin } from 'lucide-react';
 
 export const Footer = () => {
   return (
@@ -6,11 +6,19 @@ export const Footer = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="grid md:grid-cols-4 gap-8 mb-12">
           <div>
-            <img
-              src="/photo_5875219655968885966_y.jpg"
-              alt="Jayne Luxe Realty Logo"
-              className="h-20 w-auto object-contain mb-4"
-            />
+            <div className="flex items-center space-x-3 mb-4">
+              <div className="rounded-2xl overflow-hidden ring-1 ring-[#F3CF92]/30 shadow-md flex-shrink-0">
+                <img
+                  src="/photo_5875219655968885966_y.jpg"
+                  alt="Jayne Luxe Realty Logo"
+                  className="h-14 w-14 object-cover"
+                />
+              </div>
+              <div className="flex flex-col leading-none">
+                <span className="font-bold text-base tracking-widest text-[#F3CF92]">JAYNE LUXE</span>
+                <span className="text-[10px] tracking-[0.35em] mt-1 font-medium text-white/70">REALTY</span>
+              </div>
+            </div>
             <p className="text-gray-300">
               Your trusted partner in finding premium real estate properties across Nigeria.
             </p>
@@ -44,7 +52,7 @@ export const Footer = () => {
                 </a>
               </li>
               <li>
-                <a href="#/" className="text-gray-300 hover:text-[#F3CF92] transition-colors">
+                <a href="#/properties" className="text-gray-300 hover:text-[#F3CF92] transition-colors">
                   Properties
                 </a>
               </li>
@@ -69,6 +77,7 @@ export const Footer = () => {
                 <Mail className="w-5 h-5 text-[#F3CF92] mt-1 flex-shrink-0" />
                 <div>
                   <p className="text-gray-300">jayneluxerealty@gmail.com</p>
+                  <p className="text-gray-300">info.jayneluxerealty@gmail.com</p>
                 </div>
               </div>
               <div className="flex items-start space-x-3">
