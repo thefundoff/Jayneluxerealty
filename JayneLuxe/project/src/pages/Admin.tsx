@@ -219,23 +219,33 @@ export const Admin = () => {
         return;
       }
 
+      const price = parseFloat(form.price);
+      const latitude = parseFloat(form.latitude);
+      const longitude = parseFloat(form.longitude);
+
+      if (isNaN(price) || isNaN(latitude) || isNaN(longitude)) {
+        setMessage('Please enter valid numbers for price, latitude, and longitude');
+        setSubmitting(false);
+        return;
+      }
+
       const propertyData = {
         title: form.title,
         description: form.description,
-        price: parseFloat(form.price),
-        bedrooms: parseInt(form.bedrooms),
-        bathrooms: parseFloat(form.bathrooms),
-        square_feet: parseInt(form.square_feet),
+        price,
+        bedrooms: parseInt(form.bedrooms) || 0,
+        bathrooms: parseFloat(form.bathrooms) || 0,
+        square_feet: parseInt(form.square_feet) || 0,
         location: form.location,
         city: form.city,
         state: form.state,
         property_type: form.property_type,
         year_built: form.year_built ? parseInt(form.year_built) : null,
-        parking_spaces: parseInt(form.parking_spaces),
+        parking_spaces: parseInt(form.parking_spaces) || 0,
         has_pool: form.has_pool,
         has_garden: form.has_garden,
-        latitude: parseFloat(form.latitude),
-        longitude: parseFloat(form.longitude),
+        latitude,
+        longitude,
         status: 'available',
         property_category: form.property_category || null,
         area_type: form.area_type || null,
@@ -244,7 +254,7 @@ export const Admin = () => {
         discount_end_date: form.discount_end_date || null,
       };
 
-      let data;
+      let propertyId: string;
       let error;
 
       if (editingId) {
@@ -252,28 +262,28 @@ export const Admin = () => {
           .from('properties')
           .update(propertyData)
           .eq('id', editingId)
-          .select()
-          .single();
-        data = result.data;
+          .select('id');
+        propertyId = editingId;
         error = result.error;
+        if (!error && (!result.data || result.data.length === 0)) {
+          throw new Error('Update blocked by database permissions. Go to Supabase → Authentication → Policies → properties table, and add an UPDATE policy for authenticated users.');
+        }
       } else {
+        propertyId = crypto.randomUUID();
         const result = await supabase
           .from('properties')
-          .insert([propertyData])
-          .select()
-          .single();
-        data = result.data;
+          .insert([{ id: propertyId, ...propertyData }]);
         error = result.error;
       }
 
       if (error) throw error;
 
-      if (data && imageFiles.length > 0) {
+      if (imageFiles.length > 0) {
         const imageUploads = imageFiles.map(async (file, index) => {
-          const imageUrl = await uploadPropertyImage(file, data.id);
+          const imageUrl = await uploadPropertyImage(file, propertyId);
           if (imageUrl) {
             return {
-              property_id: data.id,
+              property_id: propertyId,
               image_url: imageUrl,
               is_primary: index === 0,
               display_order: index,
@@ -327,7 +337,8 @@ export const Admin = () => {
       await fetchProperties();
     } catch (error) {
       console.error('Error saving property:', error);
-      setMessage('Error saving property. Please try again.');
+      const errMsg = (error as any)?.message ?? (typeof error === 'string' ? error : JSON.stringify(error));
+      setMessage(`Error saving property: ${errMsg}`);
     } finally {
       setSubmitting(false);
     }
@@ -571,56 +582,57 @@ export const Admin = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-[#134137] text-white py-6 sticky top-20 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <button
-            onClick={handleLogout}
-            className="flex items-center space-x-2 bg-red-600 hover:bg-red-700 px-6 py-2 rounded-lg font-medium transition-colors"
-          >
-            <LogOut className="w-5 h-5" />
-            <span>Logout</span>
-          </button>
+      <div className="bg-[#134137] text-white sticky top-20 z-40">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center py-4">
+            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+            <button
+              onClick={handleLogout}
+              className="flex items-center space-x-2 bg-red-600 hover:bg-red-700 px-6 py-2 rounded-lg font-medium transition-colors"
+            >
+              <LogOut className="w-5 h-5" />
+              <span>Logout</span>
+            </button>
+          </div>
+          <div className="flex gap-3 pb-3">
+            <button
+              onClick={() => setTab('add')}
+              className={`flex items-center space-x-2 px-5 py-2 rounded-lg font-bold transition-all ${
+                tab === 'add'
+                  ? 'bg-[#F3CF92] text-[#134137]'
+                  : 'bg-white/10 text-white border border-white/30 hover:bg-white/20'
+              }`}
+            >
+              <Plus className="w-5 h-5" />
+              <span>Add Property</span>
+            </button>
+            <button
+              onClick={() => setTab('list')}
+              className={`flex items-center space-x-2 px-5 py-2 rounded-lg font-bold transition-all ${
+                tab === 'list'
+                  ? 'bg-[#F3CF92] text-[#134137]'
+                  : 'bg-white/10 text-white border border-white/30 hover:bg-white/20'
+              }`}
+            >
+              <List className="w-5 h-5" />
+              <span>All Properties</span>
+            </button>
+            <button
+              onClick={() => setTab('settings')}
+              className={`flex items-center space-x-2 px-5 py-2 rounded-lg font-bold transition-all ${
+                tab === 'settings'
+                  ? 'bg-[#F3CF92] text-[#134137]'
+                  : 'bg-white/10 text-white border border-white/30 hover:bg-white/20'
+              }`}
+            >
+              <Settings className="w-5 h-5" />
+              <span>Settings</span>
+            </button>
+          </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex gap-4 mb-8">
-          <button
-            onClick={() => setTab('add')}
-            className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-bold transition-all ${
-              tab === 'add'
-                ? 'bg-[#F3CF92] text-[#134137]'
-                : 'bg-white text-[#134137] border-2 border-gray-300 hover:border-[#F3CF92]'
-            }`}
-          >
-            <Plus className="w-5 h-5" />
-            <span>Add Property</span>
-          </button>
-          <button
-            onClick={() => setTab('list')}
-            className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-bold transition-all ${
-              tab === 'list'
-                ? 'bg-[#F3CF92] text-[#134137]'
-                : 'bg-white text-[#134137] border-2 border-gray-300 hover:border-[#F3CF92]'
-            }`}
-          >
-            <List className="w-5 h-5" />
-            <span>All Properties</span>
-          </button>
-          <button
-            onClick={() => setTab('settings')}
-            className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-bold transition-all ${
-              tab === 'settings'
-                ? 'bg-[#F3CF92] text-[#134137]'
-                : 'bg-white text-[#134137] border-2 border-gray-300 hover:border-[#F3CF92]'
-            }`}
-          >
-            <Settings className="w-5 h-5" />
-            <span>Settings</span>
-          </button>
-        </div>
-
         {tab === 'add' && (
           <div className="bg-white rounded-xl shadow-lg p-8">
             <div className="flex justify-between items-center mb-6">
