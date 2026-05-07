@@ -171,10 +171,17 @@ export const Home = () => {
         {/* Sliding image track */}
         <div
           className="absolute inset-0 flex transition-transform duration-[1200ms] ease-in-out"
-          style={{ transform: `translateX(-${heroSlide * 100}%)` }}
+          style={{
+            width: `${heroImages.length * 100}%`,
+            transform: `translateX(-${heroSlide * (100 / heroImages.length)}%)`,
+          }}
         >
           {heroImages.map((src, i) => (
-            <div key={i} className="min-w-full h-full flex-shrink-0">
+            <div
+              key={i}
+              className="h-full flex-shrink-0"
+              style={{ width: `${100 / heroImages.length}%` }}
+            >
               <img
                 src={src}
                 alt={`Jayne Luxe Realty ${i + 1}`}
