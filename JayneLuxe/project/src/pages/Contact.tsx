@@ -111,8 +111,8 @@ export const Contact = () => {
                 <div>
                   <h3 className="font-bold text-[#134137] mb-1">Office</h3>
                   <p className="text-gray-600">
-                    Inna Plaza, Gaduwa, Abuja<br />
-                    Abuja Nigeria, 480211
+                    215 Inna Plaza (Second floor)<br />
+                    Gaduwa, Abuja
                   </p>
                 </div>
               </div>

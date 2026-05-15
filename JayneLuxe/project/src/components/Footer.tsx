@@ -80,8 +80,8 @@ export const Footer = () => {
               <div className="flex items-start space-x-3">
                 <MapPin className="w-5 h-5 text-[#F3CF92] mt-1 flex-shrink-0" />
                 <div>
-                  <p className="text-gray-300">Inna Plaza, Gaduwa, Abuja</p>
-                  <p className="text-gray-300">Abuja, Nigeria 480211</p>
+                  <p className="text-gray-300">215 Inna Plaza (Second floor)</p>
+                  <p className="text-gray-300">Gaduwa, Abuja</p>
                 </div>
               </div>
             </div>
