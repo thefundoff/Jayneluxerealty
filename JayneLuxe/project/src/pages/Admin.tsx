@@ -868,8 +868,9 @@ export const Admin = () => {
                     <option value="house">House</option>
                     <option value="apartment">Apartment</option>
                     <option value="villa">Villa</option>
-                    <option value="townhouse">Townhouse</option>
-                    <option value="condo">Condo</option>
+                    <option value="waterfront">Waterfront</option>
+                    <option value="estate land">Estate Land</option>
+                    <option value="hectare land">Hectare Land</option>
                   </select>
                 </div>
 
