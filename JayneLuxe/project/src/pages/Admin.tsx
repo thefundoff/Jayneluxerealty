@@ -33,6 +33,14 @@ interface PropertyForm {
   discount_end_date: string;
 }
 
+interface VariantRow {
+  id?: string;
+  label: string;
+  description: string;
+  square_feet: string;
+  price: string;
+}
+
 export const Admin = () => {
   const [auth, setAuth] = useState<AdminAuthState>({ isAuthenticated: false, isLoading: true });
   const [email, setEmail] = useState('');
@@ -70,6 +78,7 @@ export const Admin = () => {
     discount_price: '',
     discount_end_date: '',
   });
+  const [variants, setVariants] = useState<VariantRow[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -130,14 +139,30 @@ export const Admin = () => {
     }
   }, [auth.isAuthenticated, tab]);
 
+  const formatPriceInput = (value: string): string => {
+    const digits = value.replace(/[^0-9]/g, '');
+    return digits ? Number(digits).toLocaleString('en-US') : '';
+  };
+
+  const stripCommas = (value: string): string => value.replace(/,/g, '');
+
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
     if (type === 'checkbox') {
       setForm({ ...form, [name]: (e.target as HTMLInputElement).checked });
+    } else if (name === 'price' || name === 'discount_price') {
+      setForm({ ...form, [name]: formatPriceInput(value) });
     } else {
       setForm({ ...form, [name]: value });
     }
   };
+
+  const addVariantRow = () => setVariants(prev => [...prev, { label: '', description: '', square_feet: '', price: '' }]);
+  const removeVariantRow = (index: number) => setVariants(prev => prev.filter((_, i) => i !== index));
+  const handleVariantChange = (index: number, field: keyof VariantRow, value: string) =>
+    setVariants(prev => prev.map((row, i) =>
+      i === index ? { ...row, [field]: field === 'price' ? formatPriceInput(value) : value } : row
+    ));
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -213,18 +238,18 @@ export const Admin = () => {
     setMessage('');
 
     try {
-      if (!form.title || !form.description || !form.price || !form.latitude || !form.longitude) {
+      if (!form.title || !form.description || !form.price) {
         setMessage('Please fill in all required fields');
         setSubmitting(false);
         return;
       }
 
-      const price = parseFloat(form.price);
-      const latitude = parseFloat(form.latitude);
-      const longitude = parseFloat(form.longitude);
+      const price = parseFloat(stripCommas(form.price));
+      const latitude = form.latitude ? parseFloat(form.latitude) : null;
+      const longitude = form.longitude ? parseFloat(form.longitude) : null;
 
-      if (isNaN(price) || isNaN(latitude) || isNaN(longitude)) {
-        setMessage('Please enter valid numbers for price, latitude, and longitude');
+      if (isNaN(price)) {
+        setMessage('Please enter a valid number for price');
         setSubmitting(false);
         return;
       }
@@ -244,13 +269,13 @@ export const Admin = () => {
         parking_spaces: parseInt(form.parking_spaces) || 0,
         has_pool: form.has_pool,
         has_garden: form.has_garden,
-        latitude,
-        longitude,
+        latitude: latitude !== null && !isNaN(latitude) ? latitude : null,
+        longitude: longitude !== null && !isNaN(longitude) ? longitude : null,
         status: 'available',
         property_category: form.property_category || null,
         area_type: form.area_type || null,
         discount_percentage: form.discount_percentage ? parseFloat(form.discount_percentage) : null,
-        discount_price: form.discount_price ? parseFloat(form.discount_price) : null,
+        discount_price: form.discount_price ? parseFloat(stripCommas(form.discount_price)) : null,
         discount_end_date: form.discount_end_date || null,
       };
 
@@ -278,6 +303,24 @@ export const Admin = () => {
 
       if (error) throw error;
 
+      // Save variants
+      const validVariants = variants.filter(v => v.label.trim() && v.square_feet && v.price);
+      if (editingId) {
+        await supabase.from('property_variants').delete().eq('property_id', propertyId);
+      }
+      if (validVariants.length > 0) {
+        const { error: variantError } = await supabase.from('property_variants').insert(
+          validVariants.map(v => ({
+            property_id: propertyId,
+            label: v.label.trim(),
+            description: v.description.trim() || null,
+            square_feet: parseInt(v.square_feet),
+            price: parseFloat(stripCommas(v.price)),
+          }))
+        );
+        if (variantError) throw new Error(`Failed to save variants: ${variantError.message}`);
+      }
+
       if (imageFiles.length > 0) {
         const imageUploads = imageFiles.map(async (file, index) => {
           const imageUrl = await uploadPropertyImage(file, propertyId);
@@ -300,9 +343,10 @@ export const Admin = () => {
             .insert(uploadedImages);
 
           if (insertError) {
-            console.error('Error inserting images:', insertError);
-            setMessage('Property added but some images failed to save.');
+            throw new Error(`Property saved but images failed: ${insertError.message}`);
           }
+        } else if (imageFiles.length > 0) {
+          throw new Error('Image upload failed. Check that the "property-images" storage bucket exists in Supabase.');
         }
       }
 
@@ -333,6 +377,7 @@ export const Admin = () => {
       });
       setImageFiles([]);
       setImagePreviews([]);
+      setVariants([]);
       setEditingId(null);
       await fetchProperties();
     } catch (error) {
@@ -344,12 +389,12 @@ export const Admin = () => {
     }
   };
 
-  const handleEdit = (property: Database['public']['Tables']['properties']['Row']) => {
+  const handleEdit = async (property: Database['public']['Tables']['properties']['Row']) => {
     try {
       setForm({
         title: property.title || '',
         description: property.description || '',
-        price: property.price?.toString() || '',
+        price: property.price ? Number(property.price).toLocaleString('en-US') : '',
         bedrooms: property.bedrooms?.toString() || '3',
         bathrooms: property.bathrooms?.toString() || '2',
         square_feet: property.square_feet?.toString() || '2500',
@@ -367,12 +412,26 @@ export const Admin = () => {
         property_category: property.property_category || '',
         area_type: property.area_type || '',
         discount_percentage: property.discount_percentage?.toString() || '',
-        discount_price: property.discount_price?.toString() || '',
+        discount_price: property.discount_price ? Number(property.discount_price).toLocaleString('en-US') : '',
         discount_end_date: property.discount_end_date || '',
       });
       setEditingId(property.id);
       setTab('add');
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      const { data: existingVariants } = await supabase
+        .from('property_variants')
+        .select('*')
+        .eq('property_id', property.id)
+        .order('price', { ascending: true });
+      setVariants(
+        (existingVariants || []).map(v => ({
+          id: v.id,
+          label: v.label,
+          description: v.description || '',
+          square_feet: v.square_feet.toString(),
+          price: Number(v.price).toLocaleString('en-US'),
+        }))
+      );
     } catch (err) {
       console.error('Edit error:', err);
       setMessage('Failed to open edit form: ' + (err instanceof Error ? err.message : String(err)));
@@ -406,6 +465,7 @@ export const Admin = () => {
     });
     setImageFiles([]);
     setImagePreviews([]);
+    setVariants([]);
     setEditingId(null);
     setMessage('');
   };
@@ -419,12 +479,16 @@ export const Admin = () => {
 
       if (imagesError) throw imagesError;
 
-      const { error } = await supabase
+      const { data: deleted, error } = await supabase
         .from('properties')
         .delete()
-        .eq('id', id);
+        .eq('id', id)
+        .select('id');
 
       if (error) throw error;
+      if (!deleted || deleted.length === 0) {
+        throw new Error('Delete blocked by database policy. Go to Supabase → Authentication → Policies → properties table and ensure a DELETE policy exists for the anon role.');
+      }
 
       setMessage('Property deleted successfully!');
       setDeleteConfirm(null);
@@ -432,7 +496,7 @@ export const Admin = () => {
       setTimeout(() => setMessage(''), 3000);
     } catch (error) {
       console.error('Error deleting property:', error);
-      setMessage('Error deleting property. Please try again.');
+      setMessage(`Error: ${error instanceof Error ? error.message : 'Failed to delete property.'}`);
     }
   };
 
@@ -447,14 +511,18 @@ export const Admin = () => {
 
       if (imagesError) throw imagesError;
 
-      const { error } = await supabase
+      const { data: deleted, error } = await supabase
         .from('properties')
         .delete()
-        .in('id', selectedProperties);
+        .in('id', selectedProperties)
+        .select('id');
 
       if (error) throw error;
+      if (!deleted || deleted.length === 0) {
+        throw new Error('Delete blocked by database policy. Go to Supabase → Authentication → Policies → properties table and ensure a DELETE policy exists for the anon role.');
+      }
 
-      setMessage(`${selectedProperties.length} properties deleted successfully!`);
+      setMessage(`${deleted.length} properties deleted successfully!`);
       setSelectedProperties([]);
       await fetchProperties();
       setTimeout(() => setMessage(''), 3000);
@@ -683,7 +751,8 @@ export const Admin = () => {
                     Price (NGN) *
                   </label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     name="price"
                     value={form.price}
                     onChange={handleFormChange}
@@ -715,7 +784,8 @@ export const Admin = () => {
                     Discounted Price (NGN)
                   </label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     name="discount_price"
                     value={form.discount_price}
                     onChange={handleFormChange}
@@ -805,23 +875,6 @@ export const Admin = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-[#134137] mb-2">
-                    Property Category
-                  </label>
-                  <select
-                    name="property_category"
-                    value={form.property_category}
-                    onChange={handleFormChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
-                  >
-                    <option value="">Not Specified</option>
-                    <option value="luxury">Luxury</option>
-                    <option value="premium">Premium</option>
-                    <option value="low-income">Low Income Housing</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-[#134137] mb-2">
                     Estate Area Type
                   </label>
                   <select
@@ -866,7 +919,7 @@ export const Admin = () => {
 
                 <div>
                   <label className="block text-sm font-medium text-[#134137] mb-2">
-                    Square Feet
+                    Square Metres
                   </label>
                   <input
                     type="number"
@@ -934,6 +987,92 @@ export const Admin = () => {
                     placeholder="e.g., 3.3686"
                   />
                 </div>
+              </div>
+
+              {/* Size & Price Variants */}
+              <div className="border border-gray-200 rounded-xl p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-bold text-[#134137]">Size &amp; Price Variants</h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Add multiple plot sizes with individual prices. Leave empty to use the single price and size above.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={addVariantRow}
+                    className="flex items-center gap-2 bg-[#134137] text-white px-4 py-2 rounded-lg font-medium hover:bg-[#0d2e24] transition-colors text-sm"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Size
+                  </button>
+                </div>
+
+                {variants.length === 0 && (
+                  <p className="text-sm text-gray-400 italic text-center py-4">
+                    No variants — property uses the single price and square footage above.
+                  </p>
+                )}
+
+                {variants.map((variant, index) => (
+                  <div
+                    key={index}
+                    className="border border-gray-100 rounded-lg p-4 bg-gray-50 space-y-3"
+                  >
+                    <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-3 items-end">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Label (e.g., "450 sqm Plot")</label>
+                        <input
+                          type="text"
+                          value={variant.label}
+                          onChange={(e) => handleVariantChange(index, 'label', e.target.value)}
+                          placeholder="e.g., 450 sqm Plot"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Plot Size (sqm)</label>
+                        <input
+                          type="number"
+                          value={variant.square_feet}
+                          onChange={(e) => handleVariantChange(index, 'square_feet', e.target.value)}
+                          placeholder="e.g., 4844"
+                          min="1"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Price (NGN)</label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={variant.price}
+                          onChange={(e) => handleVariantChange(index, 'price', e.target.value)}
+                          placeholder="e.g., 5,000,000"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeVariantRow(index)}
+                        className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Remove this variant"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 mb-1">Description (e.g., Semi-Detached, Duplex, Terrace)</label>
+                      <input
+                        type="text"
+                        value={variant.description}
+                        onChange={(e) => handleVariantChange(index, 'description', e.target.value)}
+                        placeholder="e.g., Semi-Detached Bungalow"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <div>

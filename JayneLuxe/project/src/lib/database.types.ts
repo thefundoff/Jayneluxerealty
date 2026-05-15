@@ -27,8 +27,8 @@ export interface Database {
           parking_spaces: number
           has_pool: boolean
           has_garden: boolean
-          latitude: number
-          longitude: number
+          latitude: number | null
+          longitude: number | null
           property_category: string | null
           area_type: string | null
           discount_percentage: number | null
@@ -115,13 +115,44 @@ export interface Database {
           created_at?: string
         }
       }
+      property_variants: {
+        Row: {
+          id: string
+          property_id: string
+          label: string
+          description: string | null
+          square_feet: number
+          price: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          property_id: string
+          label: string
+          description?: string | null
+          square_feet: number
+          price: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          property_id?: string
+          label?: string
+          description?: string | null
+          square_feet?: number
+          price?: number
+          created_at?: string
+        }
+      }
     }
   }
 }
 
 export type Property = Database['public']['Tables']['properties']['Row'];
 export type PropertyImage = Database['public']['Tables']['property_images']['Row'];
+export type PropertyVariant = Database['public']['Tables']['property_variants']['Row'];
 
 export interface PropertyWithImages extends Property {
   property_images: PropertyImage[];
+  property_variants: PropertyVariant[];
 }

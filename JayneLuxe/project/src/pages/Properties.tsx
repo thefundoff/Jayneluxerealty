@@ -49,13 +49,16 @@ export const Properties = ({ onPropertyClick }: PropertiesProps) => {
 
     if (minPrice || maxPrice) {
       filtered = filtered.filter(property => {
-        const price = property.price;
-        return price >= min && price <= max;
+        const effectivePrice =
+          property.property_variants?.length > 0
+            ? Math.min(...property.property_variants.map(v => v.price))
+            : property.price;
+        return effectivePrice >= min && effectivePrice <= max;
       });
     }
 
     if (propertyType) {
-      filtered = filtered.filter(property => property.property_category === propertyType);
+      filtered = filtered.filter(property => property.area_type === propertyType);
     }
 
     if (areaType) {
@@ -76,7 +79,8 @@ export const Properties = ({ onPropertyClick }: PropertiesProps) => {
         .from('properties')
         .select(`
           *,
-          property_images (*)
+          property_images (*),
+          property_variants (*)
         `)
         .eq('status', 'available')
         .order('created_at', { ascending: false });
@@ -189,9 +193,9 @@ export const Properties = ({ onPropertyClick }: PropertiesProps) => {
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none transition-all bg-white"
                 >
                   <option value="">All Properties</option>
-                  <option value="luxury">Luxury</option>
-                  <option value="premium">Premium</option>
-                  <option value="low-income">Low Income Housing</option>
+                  <option value="prime">Prime Areas</option>
+                  <option value="emerging">Emerging Areas</option>
+                  <option value="suburb">Suburb</option>
                 </select>
               </div>
 
@@ -207,7 +211,7 @@ export const Properties = ({ onPropertyClick }: PropertiesProps) => {
                   <option value="">All Areas</option>
                   <option value="prime">Prime Areas</option>
                   <option value="emerging">Emerging Areas</option>
-                  <option value="suburb">Suburb Areas</option>
+                  <option value="suburb">Suburb</option>
                 </select>
               </div>
             </div>

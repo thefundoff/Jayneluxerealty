@@ -80,8 +80,11 @@ export const Contact = () => {
                 </div>
                 <div>
                   <h3 className="font-bold text-[#134137] mb-1">Phone</h3>
-                  <a href="tel:+1234567890" className="text-gray-600 hover:text-[#F3CF92] transition-colors">
+                  <a href="tel:+2348072636542" className="block text-gray-600 hover:text-[#F3CF92] transition-colors">
                     +234 (807) 263-6542
+                  </a>
+                  <a href="tel:+2348104416929" className="block text-gray-600 hover:text-[#F3CF92] transition-colors">
+                    0810 441 6929
                   </a>
                 </div>
               </div>
@@ -92,8 +95,11 @@ export const Contact = () => {
                 </div>
                 <div>
                   <h3 className="font-bold text-[#134137] mb-1">Email</h3>
-                  <a href="mailto:info@estateluxe.com" className="text-gray-600 hover:text-[#F3CF92] transition-colors">
+                  <a href="mailto:jayneluxerealty@gmail.com" className="block text-gray-600 hover:text-[#F3CF92] transition-colors">
                     jayneluxerealty@gmail.com
+                  </a>
+                  <a href="mailto:info.jayneluxerealty@gmail.com" className="block text-gray-600 hover:text-[#F3CF92] transition-colors">
+                    info.jayneluxerealty@gmail.com
                   </a>
                 </div>
               </div>

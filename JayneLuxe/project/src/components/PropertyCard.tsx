@@ -14,6 +14,11 @@ export const PropertyCard = ({ property, onClick }: PropertyCardProps) => {
     property.discount_end_date &&
     new Date(property.discount_end_date) > new Date();
 
+  const hasVariants = property.property_variants?.length > 0;
+  const minVariantPrice = hasVariants ? Math.min(...property.property_variants.map(v => v.price)) : null;
+  const minSqFt = hasVariants ? Math.min(...property.property_variants.map(v => v.square_feet)) : null;
+  const maxSqFt = hasVariants ? Math.max(...property.property_variants.map(v => v.square_feet)) : null;
+
   return (
     <div
       onClick={onClick}
@@ -36,7 +41,11 @@ export const PropertyCard = ({ property, onClick }: PropertyCardProps) => {
             </div>
           </div>
         )}
-        {hasActiveDiscount ? (
+        {hasVariants ? (
+          <div className="absolute top-4 right-4 bg-[#F3CF92] text-[#134137] px-4 py-2 rounded-full font-bold shadow-lg text-sm">
+            From {formatPrice(property.price)}
+          </div>
+        ) : hasActiveDiscount ? (
           <div className="absolute top-4 right-4 flex flex-col items-end gap-1.5">
             <div className="bg-[#F3CF92] text-[#134137] px-4 py-2 rounded-full font-bold shadow-lg">
               {formatPrice(property.discount_price)}
@@ -57,9 +66,16 @@ export const PropertyCard = ({ property, onClick }: PropertyCardProps) => {
           {property.title}
         </h3>
 
-        <div className="flex items-center text-gray-600 mb-4">
-          <MapPin className="w-4 h-4 mr-1" />
-          <span className="text-sm">{property.city}, {property.state}</span>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center text-gray-600">
+            <MapPin className="w-4 h-4 mr-1" />
+            <span className="text-sm">{property.city}, {property.state}</span>
+          </div>
+          {property.area_type && (
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#134137]/10 text-[#134137] capitalize">
+              {property.area_type === 'prime' ? 'Prime Areas' : property.area_type === 'emerging' ? 'Emerging Areas' : 'Suburb'}
+            </span>
+          )}
         </div>
 
         <p className="text-gray-600 text-sm mb-4 line-clamp-2">
@@ -77,7 +93,11 @@ export const PropertyCard = ({ property, onClick }: PropertyCardProps) => {
           </div>
           <div className="flex items-center space-x-1 text-gray-700">
             <Maximize className="w-5 h-5 text-[#134137]" />
-            <span className="font-medium">{property.square_feet.toLocaleString()} sqft</span>
+            {hasVariants ? (
+              <span className="font-medium text-xs">{minSqFt!.toLocaleString()}–{maxSqFt!.toLocaleString()} sqm</span>
+            ) : (
+              <span className="font-medium">{property.square_feet.toLocaleString()} sqft</span>
+            )}
           </div>
         </div>
       </div>

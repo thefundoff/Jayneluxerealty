@@ -15,6 +15,7 @@ export const PropertyDetails = ({ propertyId, onBack }: PropertyDetailsProps) =>
   const [property, setProperty] = useState<PropertyWithImages | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
   const [showBookingModal, setShowBookingModal] = useState(false);
   const [show3DTour, setShow3DTour] = useState(false);
   const [bookingData, setBookingData] = useState({
@@ -36,7 +37,8 @@ export const PropertyDetails = ({ propertyId, onBack }: PropertyDetailsProps) =>
         .from('properties')
         .select(`
           *,
-          property_images (*)
+          property_images (*),
+          property_variants (*)
         `)
         .eq('id', propertyId)
         .maybeSingle();
@@ -45,6 +47,10 @@ export const PropertyDetails = ({ propertyId, onBack }: PropertyDetailsProps) =>
       if (data) {
         const sortedImages = [...data.property_images].sort((a, b) => a.display_order - b.display_order);
         setProperty({ ...data, property_images: sortedImages });
+        if (data.property_variants && data.property_variants.length > 0) {
+          const sorted = [...data.property_variants].sort((a, b) => a.price - b.price);
+          setSelectedVariantId(sorted[0].id);
+        }
       }
     } catch (error) {
       console.error('Error fetching property:', error);
@@ -89,14 +95,20 @@ export const PropertyDetails = ({ propertyId, onBack }: PropertyDetailsProps) =>
       day: 'numeric',
     });
 
-    const hasActiveDiscount = property.discount_price &&
+    const selectedVariant = property.property_variants?.find(v => v.id === selectedVariantId) ?? null;
+    const hasActiveDiscount = !selectedVariant &&
+      property.discount_price &&
       property.discount_end_date &&
       new Date(property.discount_end_date) > new Date();
 
-    const displayPrice = hasActiveDiscount ? property.discount_price : property.price;
-    const priceInfo = hasActiveDiscount
-      ? `${formatNaira(displayPrice)} (${property.discount_percentage}% OFF - was ${formatNaira(property.price)})`
-      : formatNaira(property.price);
+    const displayPrice = selectedVariant
+      ? selectedVariant.price
+      : hasActiveDiscount ? property.discount_price : property.price;
+    const priceInfo = selectedVariant
+      ? `${formatNaira(selectedVariant.price)} (${selectedVariant.label})`
+      : hasActiveDiscount
+        ? `${formatNaira(property.discount_price!)} (${property.discount_percentage}% OFF - was ${formatNaira(property.price)})`
+        : formatNaira(property.price);
 
     const whatsappMessage = `Hello! I would like to book a property tour.\n\n*Property Details:*\nProperty: ${property.title}\nLocation: ${property.location}, ${property.city}\nPrice: ${priceInfo}\n\n*Tour Details:*\nName: ${name}\nPhone: ${phone}\n${email ? `Email: ${email}\n` : ''}Date: ${formattedDate}\nTime: ${tourTime}\n${message ? `\nAdditional Message:\n${message}` : ''}\n\nLooking forward to viewing this property!`;
 
@@ -139,6 +151,10 @@ export const PropertyDetails = ({ propertyId, onBack }: PropertyDetailsProps) =>
       </div>
     );
   }
+
+  const selectedVariant = property.property_variants?.find(v => v.id === selectedVariantId) ?? null;
+  const displayPrice = selectedVariant ? selectedVariant.price : property.price;
+  const displaySqFt = selectedVariant ? selectedVariant.square_feet : property.square_feet;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -272,7 +288,7 @@ export const PropertyDetails = ({ propertyId, onBack }: PropertyDetailsProps) =>
                   </div>
                   <div>
                     <h3 className="font-bold text-[#134137]">Square Feet</h3>
-                    <p className="text-gray-600">{property.square_feet.toLocaleString()} sq ft</p>
+                    <p className="text-gray-600">{displaySqFt.toLocaleString()} sq ft</p>
                   </div>
                 </div>
 
@@ -327,7 +343,50 @@ export const PropertyDetails = ({ propertyId, onBack }: PropertyDetailsProps) =>
 
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl p-8 shadow-lg sticky top-24">
-              {property.discount_price && property.discount_end_date && new Date(property.discount_end_date) > new Date() ? (
+              {/* Variant selector */}
+              {property.property_variants && property.property_variants.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-sm font-semibold text-[#134137] mb-3 uppercase tracking-wide">
+                    Choose Your Plot Size
+                  </h3>
+                  <div className="flex flex-col gap-2">
+                    {[...property.property_variants]
+                      .sort((a, b) => a.price - b.price)
+                      .map(variant => (
+                        <button
+                          key={variant.id}
+                          type="button"
+                          onClick={() => setSelectedVariantId(variant.id)}
+                          className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all ${
+                            selectedVariantId === variant.id
+                              ? 'border-[#F3CF92] bg-[#F3CF92]/10 shadow-sm'
+                              : 'border-gray-200 hover:border-[#134137]/40 bg-white'
+                          }`}
+                        >
+                          <div className="flex justify-between items-center">
+                            <span className="font-semibold text-[#134137] text-sm">{variant.label}</span>
+                            <span className="font-bold text-[#134137]">{formatNaira(variant.price)}</span>
+                          </div>
+                          {variant.description && (
+                            <p className="text-xs font-medium text-[#134137]/70 mt-0.5">{variant.description}</p>
+                          )}
+                          <p className="text-xs text-gray-500 mt-0.5">{variant.square_feet.toLocaleString()} sqm</p>
+                        </button>
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Price display */}
+              {property.property_variants && property.property_variants.length > 0 ? (
+                <div className="mb-6">
+                  <div className="text-sm text-gray-600 mb-1">Selected Price</div>
+                  <div className="text-4xl font-bold text-[#134137]">
+                    {formatNaira(displayPrice)}
+                  </div>
+                  <div className="text-sm text-gray-500 mt-1">{displaySqFt.toLocaleString()} sqm</div>
+                </div>
+              ) : property.discount_price && property.discount_end_date && new Date(property.discount_end_date) > new Date() ? (
                 <div className="mb-6">
                   <div className="bg-red-600 text-white px-3 py-1.5 rounded-md text-xs font-bold shadow-lg inline-flex items-center gap-1 mb-3">
                     <Tag className="w-3.5 h-3.5" />

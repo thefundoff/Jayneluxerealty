@@ -1,4 +1,4 @@
-﻿import { Facebook, Twitter, X, Instagram, Linkedin, Phone, Mail, MapPin } from 'lucide-react';
+﻿import { Facebook, X, Instagram, Linkedin, Phone, Mail, MapPin } from 'lucide-react';
 
 export const Footer = () => {
   return (
@@ -71,6 +71,7 @@ export const Footer = () => {
                 <Phone className="w-5 h-5 text-[#F3CF92] mt-1 flex-shrink-0" />
                 <div>
                   <p className="text-gray-300">+234 (807) 263-6542</p>
+                  <p className="text-gray-300">0810 441 6929</p>
                 </div>
               </div>
               <div className="flex items-start space-x-3">
@@ -140,7 +141,7 @@ export const Footer = () => {
           </div>
 
           <div className="border-t border-gray-700 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 JayneLuxe Realty. All rights reserved.</p>
+            <p>&copy; 2026 JayneLuxe Realty. All rights reserved.</p>
           </div>
         </div>
       </div>

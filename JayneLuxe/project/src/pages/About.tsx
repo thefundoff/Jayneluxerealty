@@ -196,6 +196,18 @@ evolving real estate landscape.:
           </div>
         </div>
 
+        <div className="bg-[#F3CF92]/15 border border-[#F3CF92] rounded-xl p-12 mb-20 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 rounded-full border border-[#F3CF92]/30 translate-x-24 -translate-y-24 pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full border border-[#F3CF92]/20 -translate-x-16 translate-y-16 pointer-events-none" />
+          <div className="relative z-10 text-center max-w-4xl mx-auto">
+            <p className="text-sm font-semibold tracking-[0.25em] uppercase text-[#134137]/60 mb-3">Where We're Headed</p>
+            <h2 className="text-3xl font-bold text-[#134137] mb-6">Our Vision</h2>
+            <p className="text-xl text-[#134137]/80 leading-relaxed">
+              To help clients and investors make smarter real estate decisions through exclusive opportunities, strategic insight, and sustainable investment value across Nigeria and beyond.
+            </p>
+          </div>
+        </div>
+
         <div className="grid md:grid-cols-3 gap-8 mb-20">
           <div className="bg-white p-8 rounded-xl shadow-lg border-t-4 border-[#F3CF92]">
             <div className="w-16 h-16 bg-[#F3CF92] rounded-lg flex items-center justify-center mb-4">
