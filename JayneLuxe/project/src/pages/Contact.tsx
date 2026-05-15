@@ -84,7 +84,7 @@ export const Contact = () => {
                     +234 (807) 263-6542
                   </a>
                   <a href="tel:+2348104416929" className="block text-gray-600 hover:text-[#F3CF92] transition-colors">
-                    0810 441 6929
+                    +234 810 441 6929
                   </a>
                 </div>
               </div>
