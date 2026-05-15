@@ -653,47 +653,47 @@ export const Admin = () => {
       <div className="bg-[#134137] text-white sticky top-20 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
-            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+            <h1 className="text-xl sm:text-3xl font-bold">Admin Dashboard</h1>
             <button
               onClick={handleLogout}
-              className="flex items-center space-x-2 bg-red-600 hover:bg-red-700 px-6 py-2 rounded-lg font-medium transition-colors"
+              className="flex items-center space-x-2 bg-red-600 hover:bg-red-700 px-3 sm:px-6 py-2 rounded-lg font-medium transition-colors text-sm sm:text-base"
             >
               <LogOut className="w-5 h-5" />
-              <span>Logout</span>
+              <span className="hidden sm:inline">Logout</span>
             </button>
           </div>
-          <div className="flex gap-3 pb-3">
+          <div className="flex gap-2 pb-3 overflow-x-auto">
             <button
               onClick={() => setTab('add')}
-              className={`flex items-center space-x-2 px-5 py-2 rounded-lg font-bold transition-all ${
+              className={`flex items-center space-x-2 px-3 sm:px-5 py-2 rounded-lg font-bold transition-all text-sm sm:text-base whitespace-nowrap ${
                 tab === 'add'
                   ? 'bg-[#F3CF92] text-[#134137]'
                   : 'bg-white/10 text-white border border-white/30 hover:bg-white/20'
               }`}
             >
-              <Plus className="w-5 h-5" />
+              <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
               <span>Add Property</span>
             </button>
             <button
               onClick={() => setTab('list')}
-              className={`flex items-center space-x-2 px-5 py-2 rounded-lg font-bold transition-all ${
+              className={`flex items-center space-x-2 px-3 sm:px-5 py-2 rounded-lg font-bold transition-all text-sm sm:text-base whitespace-nowrap ${
                 tab === 'list'
                   ? 'bg-[#F3CF92] text-[#134137]'
                   : 'bg-white/10 text-white border border-white/30 hover:bg-white/20'
               }`}
             >
-              <List className="w-5 h-5" />
+              <List className="w-4 h-4 sm:w-5 sm:h-5" />
               <span>All Properties</span>
             </button>
             <button
               onClick={() => setTab('settings')}
-              className={`flex items-center space-x-2 px-5 py-2 rounded-lg font-bold transition-all ${
+              className={`flex items-center space-x-2 px-3 sm:px-5 py-2 rounded-lg font-bold transition-all text-sm sm:text-base whitespace-nowrap ${
                 tab === 'settings'
                   ? 'bg-[#F3CF92] text-[#134137]'
                   : 'bg-white/10 text-white border border-white/30 hover:bg-white/20'
               }`}
             >
-              <Settings className="w-5 h-5" />
+              <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
               <span>Settings</span>
             </button>
           </div>
@@ -702,9 +702,9 @@ export const Admin = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {tab === 'add' && (
-          <div className="bg-white rounded-xl shadow-lg p-8">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-[#134137]">
+          <div className="bg-white rounded-xl shadow-lg p-4 sm:p-8">
+            <div className="flex flex-wrap gap-2 justify-between items-center mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-[#134137]">
                 {editingId ? 'Edit Property' : 'Add New Property'}
               </h2>
               {editingId && (
@@ -990,8 +990,8 @@ export const Admin = () => {
               </div>
 
               {/* Size & Price Variants */}
-              <div className="border border-gray-200 rounded-xl p-6 space-y-4">
-                <div className="flex items-center justify-between">
+              <div className="border border-gray-200 rounded-xl p-4 sm:p-6 space-y-4">
+                <div className="flex flex-wrap gap-2 items-center justify-between">
                   <div>
                     <h3 className="text-lg font-bold text-[#134137]">Size &amp; Price Variants</h3>
                     <p className="text-sm text-gray-500 mt-1">
@@ -1019,7 +1019,7 @@ export const Admin = () => {
                     key={index}
                     className="border border-gray-100 rounded-lg p-4 bg-gray-50 space-y-3"
                   >
-                    <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-3 items-end">
+                    <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-end">
                       <div>
                         <label className="block text-xs font-medium text-gray-600 mb-1">Label (e.g., "450 sqm Plot")</label>
                         <input
@@ -1187,20 +1187,58 @@ export const Admin = () => {
               </div>
             )}
             {selectedProperties.length > 0 && (
-              <div className="p-4 bg-red-50 border-b border-red-200 flex items-center justify-between">
-                <span className="text-red-900 font-semibold">
+              <div className="p-4 bg-red-50 border-b border-red-200 flex flex-wrap gap-3 items-center justify-between">
+                <span className="text-red-900 font-semibold text-sm sm:text-base">
                   {selectedProperties.length} {selectedProperties.length === 1 ? 'property' : 'properties'} selected
                 </span>
                 <button
                   onClick={handleBulkDelete}
-                  className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 transition-colors flex items-center gap-2"
+                  className="bg-red-600 text-white px-4 py-2 rounded-lg font-bold hover:bg-red-700 transition-colors flex items-center gap-2 text-sm"
                 >
                   <Trash2 className="w-4 h-4" />
                   Delete Selected
                 </button>
               </div>
             )}
-            <div className="overflow-x-auto">
+
+            {/* Mobile card list */}
+            <div className="sm:hidden divide-y divide-gray-100">
+              {properties.map((property) => (
+                <div key={property.id} className="p-4 flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={selectedProperties.includes(property.id)}
+                    onChange={() => toggleSelectProperty(property.id)}
+                    className="w-4 h-4 cursor-pointer mt-1 flex-shrink-0"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-[#134137] truncate">{property.title}</p>
+                    <p className="text-sm text-gray-500 capitalize">{property.property_type} · {property.city}</p>
+                    <p className="text-sm font-bold text-[#134137] mt-1">₦{property.price.toLocaleString()}</p>
+                    <p className="text-xs text-gray-400">{property.bedrooms} bed · {property.bathrooms} bath</p>
+                  </div>
+                  <div className="flex flex-col gap-2 flex-shrink-0">
+                    <button
+                      onClick={() => handleEdit(property)}
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="Edit"
+                    >
+                      <Edit2 className="w-5 h-5" />
+                    </button>
+                    <button
+                      onClick={() => setDeleteConfirm(property.id)}
+                      className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop table */}
+            <div className="hidden sm:block overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-gray-100 border-b">
                   <tr>
@@ -1259,6 +1297,7 @@ export const Admin = () => {
                 </tbody>
               </table>
             </div>
+
             {properties.length === 0 && (
               <div className="p-8 text-center text-gray-600">
                 No properties found
@@ -1268,8 +1307,8 @@ export const Admin = () => {
         )}
 
         {tab === 'settings' && (
-          <div className="bg-white rounded-xl shadow-lg p-8 max-w-md">
-            <h2 className="text-2xl font-bold text-[#134137] mb-6">Change Password</h2>
+          <div className="bg-white rounded-xl shadow-lg p-4 sm:p-8 w-full sm:max-w-md">
+            <h2 className="text-xl sm:text-2xl font-bold text-[#134137] mb-6">Change Password</h2>
 
             <form onSubmit={handleChangePassword} className="space-y-5">
               <div>
