@@ -34,36 +34,17 @@ export const Navigation = ({ currentRoute }: NavigationProps) => {
     >
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-20">
-          <a href="#/" className="flex items-center space-x-3 group">
-            {/* Logo mark */}
-            <div className={`relative flex-shrink-0 rounded-2xl overflow-hidden transition-all duration-300
+          <a href="#/" className="flex items-center group">
+            <div className={`relative flex-shrink-0 rounded-xl overflow-hidden transition-all duration-300
               ring-1 ring-[#F3CF92]/25 group-hover:ring-2 group-hover:ring-[#F3CF92]/70
               shadow-md group-hover:shadow-[0_0_18px_rgba(243,207,146,0.25)]
               ${isTransparent ? 'ring-[#F3CF92]/40' : ''}`}
             >
               <img
-                src="/photo_5875219655968885966_y.jpg"
+                src="/jlr-logo.jpg"
                 alt="Jayne Luxe Realty Logo"
-                className="h-14 w-14 object-cover transition-transform duration-500 group-hover:scale-110"
+                className="h-16 w-16 object-contain transition-transform duration-500 group-hover:scale-105"
               />
-            </div>
-
-            {/* Wordmark */}
-            <div className="hidden sm:flex flex-col leading-none">
-              <span className={`font-bold text-base tracking-widest transition-colors duration-300
-                ${isTransparent
-                  ? 'text-[#F3CF92] drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]'
-                  : 'text-[#F3CF92]'}`}
-              >
-                JAYNE LUXE
-              </span>
-              <span className={`text-[10px] tracking-[0.35em] mt-1 font-medium transition-colors duration-300
-                ${isTransparent
-                  ? 'text-white/80 drop-shadow-[0_1px_3px_rgba(0,0,0,0.9)]'
-                  : 'text-white/70'}`}
-              >
-                REALTY
-              </span>
             </div>
           </a>
 

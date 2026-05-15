@@ -79,11 +79,14 @@ export const Home = () => {
   useEffect(() => {
     supabase
       .from('properties')
-      .select('*, property_images (*)')
+      .select('*, property_images (*), property_variants (*)')
       .eq('status', 'available')
       .order('created_at', { ascending: false })
-      .limit(3)
-      .then(({ data }) => setFeaturedProperties(data || []));
+      .limit(50)
+      .then(({ data }) => {
+        const withImages = (data || []).filter(p => p.property_images?.length > 0);
+        setFeaturedProperties(withImages.slice(0, 3));
+      });
   }, []);
 
   useEffect(() => {
