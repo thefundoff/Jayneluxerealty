@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Mail, Phone, MapPin, Send, MessageCircle } from 'lucide-react';
 
 export const Contact = () => {
@@ -51,7 +51,7 @@ export const Contact = () => {
 
   const handleWhatsApp = () => {
     const message = encodeURIComponent('Hello!! I am interested in your real estate properties.');
-    window.open(`https://wa.me/+2348072636542?text=${message}`, '_blank');
+    window.open(`https://wa.me/+2348104416929?text=${message}`, '_blank');
   };
 
   return (

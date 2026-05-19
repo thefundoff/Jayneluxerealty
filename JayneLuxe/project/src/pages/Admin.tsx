@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Lock, LogOut, Plus, List, X, Upload, CreditCard as Edit2, Trash2, Eye, EyeOff, Settings, Calendar } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
@@ -106,6 +106,14 @@ export const Admin = () => {
   const [slotForm, setSlotForm] = useState({ slot_date: '', slot_time: '', label: '' });
   const [addingSlot, setAddingSlot] = useState(false);
   const [slotMessage, setSlotMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [slotMode, setSlotMode] = useState<'single' | 'batch'>('single');
+  const [batchSelectedIds, setBatchSelectedIds] = useState<string[]>([]);
+  const [batchDeveloperFilter, setBatchDeveloperFilter] = useState('');
+  const [batchSubMode, setBatchSubMode] = useState<'add' | 'edit'>('add');
+  const [batchSlots, setBatchSlots] = useState<InspectionSlot[]>([]);
+  const [batchSlotsLoading, setBatchSlotsLoading] = useState(false);
+  const [editingBatchSlotId, setEditingBatchSlotId] = useState<string | null>(null);
+  const [editBatchSlotForm, setEditBatchSlotForm] = useState({ slot_date: '', slot_time: '', label: '' });
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -587,11 +595,51 @@ export const Admin = () => {
     setSlots((data as InspectionSlot[]) || []);
   };
 
+  const fetchBatchSlots = async (ids: string[]) => {
+    if (ids.length === 0) { setBatchSlots([]); return; }
+    setBatchSlotsLoading(true);
+    const { data } = await supabase
+      .from('inspection_slots')
+      .select('*')
+      .in('property_id', ids)
+      .order('slot_date', { ascending: true })
+      .order('slot_time', { ascending: true });
+    setBatchSlots((data as InspectionSlot[]) || []);
+    setBatchSlotsLoading(false);
+  };
+
+  const handleBatchSlotEditSave = async (id: string) => {
+    await supabase.from('inspection_slots').update({
+      slot_date: editBatchSlotForm.slot_date,
+      slot_time: editBatchSlotForm.slot_time,
+      label: editBatchSlotForm.label.trim() || null,
+    }).eq('id', id);
+    setEditingBatchSlotId(null);
+    await fetchBatchSlots(batchSelectedIds);
+  };
+
+  const handleBatchToggleSlot = async (id: string, current: boolean) => {
+    await supabase.from('inspection_slots').update({ is_active: !current }).eq('id', id);
+    await fetchBatchSlots(batchSelectedIds);
+  };
+
+  const handleBatchDeleteSlot = async (id: string) => {
+    await supabase.from('inspection_slots').delete().eq('id', id);
+    await fetchBatchSlots(batchSelectedIds);
+  };
+
   const handleAddSlot = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedSlotPropertyId) {
-      setSlotMessage({ type: 'error', text: 'Please select a property first.' });
-      return;
+    if (slotMode === 'single') {
+      if (!selectedSlotPropertyId) {
+        setSlotMessage({ type: 'error', text: 'Please select a property first.' });
+        return;
+      }
+    } else {
+      if (batchSelectedIds.length === 0) {
+        setSlotMessage({ type: 'error', text: 'Please select at least one property.' });
+        return;
+      }
     }
     if (!slotForm.slot_date || !slotForm.slot_time) {
       setSlotMessage({ type: 'error', text: 'Date and time are required.' });
@@ -599,19 +647,22 @@ export const Admin = () => {
     }
     setAddingSlot(true);
     setSlotMessage(null);
-    const { error } = await supabase.from('inspection_slots').insert([{
-      property_id: selectedSlotPropertyId,
+    const ids = slotMode === 'single' ? [selectedSlotPropertyId] : batchSelectedIds;
+    const rows = ids.map(id => ({
+      property_id: id,
       slot_date: slotForm.slot_date,
       slot_time: slotForm.slot_time,
       label: slotForm.label.trim() || null,
-    }]);
+    }));
+    const { error } = await supabase.from('inspection_slots').insert(rows);
     setAddingSlot(false);
     if (error) {
       setSlotMessage({ type: 'error', text: error.message });
     } else {
-      setSlotMessage({ type: 'success', text: 'Slot added successfully!' });
+      const count = ids.length;
+      setSlotMessage({ type: 'success', text: count === 1 ? 'Slot added successfully!' : `Slot added to ${count} properties!` });
       setSlotForm({ slot_date: '', slot_time: '', label: '' });
-      await fetchSlots();
+      if (slotMode === 'single') await fetchSlots();
       setTimeout(() => setSlotMessage(null), 3000);
     }
   };
@@ -803,7 +854,7 @@ export const Admin = () => {
               }`}
             >
               <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span>Inspection Times</span>
+              <span>Inspection Time Slots</span>
             </button>
           </div>
         </div>
@@ -1558,137 +1609,436 @@ export const Admin = () => {
           <div className="bg-white rounded-xl shadow-lg p-4 sm:p-8">
             <h2 className="text-xl sm:text-2xl font-bold text-[#134137] mb-2">Inspection Slots</h2>
             <p className="text-gray-500 text-sm mb-6">
-              Select a property, then add specific inspection dates and times for it. Each property has its own schedule.
+              Add inspection date and time slots to one property, or apply the same slot to multiple properties at once.
             </p>
 
-            {/* Property selector */}
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-[#134137] mb-2">Select Property *</label>
-              <select
-                value={selectedSlotPropertyId}
-                onChange={(e) => {
-                  setSelectedSlotPropertyId(e.target.value);
-                  setSlots([]);
-                  setSlotMessage(null);
-                }}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
+            {/* Mode toggle */}
+            <div className="flex gap-2 mb-6">
+              <button
+                type="button"
+                onClick={() => { setSlotMode('single'); setBatchSelectedIds([]); setSlotMessage(null); }}
+                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${slotMode === 'single' ? 'bg-[#134137] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
               >
-                <option value="">-- Choose a property --</option>
-                {properties.map(p => (
-                  <option key={p.id} value={p.id}>
-                    {p.title} — {p.city}
-                  </option>
-                ))}
-              </select>
+                Single Property
+              </button>
+              <button
+                type="button"
+                onClick={() => { setSlotMode('batch'); setSelectedSlotPropertyId(''); setSlots([]); setSlotMessage(null); }}
+                className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${slotMode === 'batch' ? 'bg-[#134137] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+              >
+                Batch (Multiple Properties)
+              </button>
             </div>
 
-            {!selectedSlotPropertyId ? (
-              <div className="text-center text-gray-400 py-12 border-2 border-dashed border-gray-200 rounded-xl">
-                Select a property above to manage its inspection slots.
-              </div>
-            ) : (
-            <>
-            {/* Add slot form */}
-            <form onSubmit={handleAddSlot} className="mb-8 border border-gray-200 rounded-xl p-4 sm:p-6 space-y-4">
-              <h3 className="font-bold text-[#134137] text-lg">Add New Slot</h3>
-              <div className="grid sm:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-[#134137] mb-2">Date *</label>
-                  <input
-                    type="date"
-                    value={slotForm.slot_date}
-                    min={new Date().toISOString().split('T')[0]}
-                    onChange={(e) => setSlotForm(prev => ({ ...prev, slot_date: e.target.value }))}
-                    required
+            {slotMode === 'single' ? (
+              <>
+                {/* Single property selector */}
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-[#134137] mb-2">Select Property *</label>
+                  <select
+                    value={selectedSlotPropertyId}
+                    onChange={(e) => {
+                      setSelectedSlotPropertyId(e.target.value);
+                      setSlots([]);
+                      setSlotMessage(null);
+                    }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
-                  />
+                  >
+                    <option value="">-- Choose a property --</option>
+                    {properties.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.title} — {p.city}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#134137] mb-2">Time *</label>
-                  <input
-                    type="time"
-                    value={slotForm.slot_time}
-                    onChange={(e) => setSlotForm(prev => ({ ...prev, slot_time: e.target.value }))}
-                    required
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[#134137] mb-2">Label (Optional)</label>
-                  <input
-                    type="text"
-                    value={slotForm.label}
-                    onChange={(e) => setSlotForm(prev => ({ ...prev, label: e.target.value }))}
-                    placeholder="e.g., Morning Tour"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
-                  />
-                </div>
-              </div>
-              {slotMessage && (
-                <div className={`p-3 rounded-lg text-sm ${slotMessage.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                  {slotMessage.text}
-                </div>
-              )}
-              <button
-                type="submit"
-                disabled={addingSlot}
-                className="flex items-center gap-2 bg-[#134137] text-white px-6 py-2 rounded-lg font-bold hover:bg-[#0d2e24] transition-colors disabled:opacity-50"
-              >
-                <Plus className="w-4 h-4" />
-                {addingSlot ? 'Adding...' : 'Add Slot'}
-              </button>
-            </form>
 
-            {/* Slots list */}
-            <div className="space-y-3">
-              <h3 className="font-bold text-[#134137] text-lg">
-                All Slots ({slots.length})
-              </h3>
-              {slots.length === 0 ? (
-                <p className="text-gray-400 text-sm italic py-4 text-center">No inspection slots yet for this property. Add one above.</p>
-              ) : (
-                <div className="divide-y divide-gray-100 border border-gray-200 rounded-xl overflow-hidden">
-                  {slots.map(slot => (
-                    <div
-                      key={slot.id}
-                      className={`flex flex-wrap gap-3 items-center justify-between px-4 py-3 ${
-                        slot.is_active ? 'bg-white' : 'bg-gray-50'
-                      }`}
-                    >
-                      <div className="flex-1 min-w-0">
-                        <p className={`font-semibold text-sm ${slot.is_active ? 'text-[#134137]' : 'text-gray-400 line-through'}`}>
-                          {formatSlotDate(slot.slot_date)}
-                        </p>
-                        <p className="text-sm text-gray-500 mt-0.5">
-                          {formatSlotTime(slot.slot_time)}
-                          {slot.label && <span className="ml-2 font-medium text-[#134137]/70">· {slot.label}</span>}
-                        </p>
+                {!selectedSlotPropertyId ? (
+                  <div className="text-center text-gray-400 py-12 border-2 border-dashed border-gray-200 rounded-xl">
+                    Select a property above to manage its inspection slots.
+                  </div>
+                ) : (
+                  <>
+                    {/* Add slot form */}
+                    <form onSubmit={handleAddSlot} className="mb-8 border border-gray-200 rounded-xl p-4 sm:p-6 space-y-4">
+                      <h3 className="font-bold text-[#134137] text-lg">Add New Slot</h3>
+                      <div className="grid sm:grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-[#134137] mb-2">Date *</label>
+                          <input
+                            type="date"
+                            value={slotForm.slot_date}
+                            min={new Date().toISOString().split('T')[0]}
+                            onChange={(e) => setSlotForm(prev => ({ ...prev, slot_date: e.target.value }))}
+                            required
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#134137] mb-2">Time *</label>
+                          <input
+                            type="time"
+                            value={slotForm.slot_time}
+                            onChange={(e) => setSlotForm(prev => ({ ...prev, slot_time: e.target.value }))}
+                            required
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-[#134137] mb-2">Label (Optional)</label>
+                          <input
+                            type="text"
+                            value={slotForm.label}
+                            onChange={(e) => setSlotForm(prev => ({ ...prev, label: e.target.value }))}
+                            placeholder="e.g., Morning Tour"
+                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
+                          />
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 flex-shrink-0">
-                        <button
-                          onClick={() => handleToggleSlot(slot.id, slot.is_active)}
-                          className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
-                            slot.is_active
-                              ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                              : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
-                          }`}
+                      {slotMessage && (
+                        <div className={`p-3 rounded-lg text-sm ${slotMessage.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                          {slotMessage.text}
+                        </div>
+                      )}
+                      <button
+                        type="submit"
+                        disabled={addingSlot}
+                        className="flex items-center gap-2 bg-[#134137] text-white px-6 py-2 rounded-lg font-bold hover:bg-[#0d2e24] transition-colors disabled:opacity-50"
+                      >
+                        <Plus className="w-4 h-4" />
+                        {addingSlot ? 'Adding...' : 'Add Slot'}
+                      </button>
+                    </form>
+
+                    {/* Slots list */}
+                    <div className="space-y-3">
+                      <h3 className="font-bold text-[#134137] text-lg">
+                        All Slots ({slots.length})
+                      </h3>
+                      {slots.length === 0 ? (
+                        <p className="text-gray-400 text-sm italic py-4 text-center">No inspection slots yet for this property. Add one above.</p>
+                      ) : (
+                        <div className="divide-y divide-gray-100 border border-gray-200 rounded-xl overflow-hidden">
+                          {slots.map(slot => (
+                            <div
+                              key={slot.id}
+                              className={`flex flex-wrap gap-3 items-center justify-between px-4 py-3 ${
+                                slot.is_active ? 'bg-white' : 'bg-gray-50'
+                              }`}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <p className={`font-semibold text-sm ${slot.is_active ? 'text-[#134137]' : 'text-gray-400 line-through'}`}>
+                                  {formatSlotDate(slot.slot_date)}
+                                </p>
+                                <p className="text-sm text-gray-500 mt-0.5">
+                                  {formatSlotTime(slot.slot_time)}
+                                  {slot.label && <span className="ml-2 font-medium text-[#134137]/70">· {slot.label}</span>}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <button
+                                  onClick={() => handleToggleSlot(slot.id, slot.is_active)}
+                                  className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                                    slot.is_active
+                                      ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                                      : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
+                                  }`}
+                                >
+                                  {slot.is_active ? 'Active' : 'Inactive'}
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteSlot(slot.id)}
+                                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                  title="Delete slot"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </>
+            ) : (
+              <>
+                {/* Batch mode: developer filter + property checkboxes */}
+                {(() => {
+                  const developerList = [...new Set(properties.map(p => p.developer).filter(Boolean))].sort() as string[];
+                  const filteredProps = batchDeveloperFilter
+                    ? properties.filter(p => p.developer === batchDeveloperFilter)
+                    : properties;
+                  return (
+                    <>
+                      <div className="mb-4">
+                        <label className="block text-sm font-medium text-[#134137] mb-2">Filter by Developer</label>
+                        <select
+                          value={batchDeveloperFilter}
+                          onChange={(e) => { setBatchDeveloperFilter(e.target.value); setBatchSelectedIds([]); }}
+                          className="w-full sm:w-72 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
                         >
-                          {slot.is_active ? 'Active' : 'Inactive'}
-                        </button>
-                        <button
-                          onClick={() => handleDeleteSlot(slot.id)}
-                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete slot"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                          <option value="">All Properties</option>
+                          {developerList.map(dev => (
+                            <option key={dev} value={dev}>{dev}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="mb-6 border border-gray-200 rounded-xl overflow-hidden">
+                        <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+                          <span className="text-sm font-semibold text-[#134137]">
+                            Select Properties ({batchSelectedIds.length} selected)
+                          </span>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setBatchSelectedIds(filteredProps.map(p => p.id))}
+                              className="text-xs font-semibold text-[#134137] hover:underline"
+                            >
+                              Select All
+                            </button>
+                            <span className="text-gray-300 select-none">|</span>
+                            <button
+                              type="button"
+                              onClick={() => setBatchSelectedIds([])}
+                              className="text-xs font-semibold text-gray-500 hover:underline"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                        </div>
+                        {filteredProps.length === 0 ? (
+                          <p className="text-gray-400 text-sm italic py-6 text-center">No properties found.</p>
+                        ) : (
+                          <div className="divide-y divide-gray-100 max-h-64 overflow-y-auto">
+                            {filteredProps.map(p => (
+                              <label
+                                key={p.id}
+                                className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={batchSelectedIds.includes(p.id)}
+                                  onChange={() => setBatchSelectedIds(prev =>
+                                    prev.includes(p.id) ? prev.filter(x => x !== p.id) : [...prev, p.id]
+                                  )}
+                                  className="w-4 h-4 accent-[#134137]"
+                                />
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-sm text-[#134137] truncate">{p.title}</p>
+                                  <p className="text-xs text-gray-500">{p.city}{p.developer ? ` · ${p.developer}` : ''}</p>
+                                </div>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  );
+                })()}
+
+                {/* Batch sub-mode toggle */}
+                <div className="flex gap-2 mb-6">
+                  <button
+                    type="button"
+                    onClick={() => setBatchSubMode('add')}
+                    className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${batchSubMode === 'add' ? 'bg-[#134137] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                  >
+                    Add Slot
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => { setBatchSubMode('edit'); setEditingBatchSlotId(null); }}
+                    className={`px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${batchSubMode === 'edit' ? 'bg-[#134137] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                  >
+                    Edit / Manage Slots
+                  </button>
+                </div>
+
+                {batchSubMode === 'add' ? (
+                  <form onSubmit={handleAddSlot} className="border border-gray-200 rounded-xl p-4 sm:p-6 space-y-4">
+                    <h3 className="font-bold text-[#134137] text-lg">Add Slot to Selected Properties</h3>
+                    <div className="grid sm:grid-cols-3 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-[#134137] mb-2">Date *</label>
+                        <input
+                          type="date"
+                          value={slotForm.slot_date}
+                          min={new Date().toISOString().split('T')[0]}
+                          onChange={(e) => setSlotForm(prev => ({ ...prev, slot_date: e.target.value }))}
+                          required
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-[#134137] mb-2">Time *</label>
+                        <input
+                          type="time"
+                          value={slotForm.slot_time}
+                          onChange={(e) => setSlotForm(prev => ({ ...prev, slot_time: e.target.value }))}
+                          required
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-[#134137] mb-2">Label (Optional)</label>
+                        <input
+                          type="text"
+                          value={slotForm.label}
+                          onChange={(e) => setSlotForm(prev => ({ ...prev, label: e.target.value }))}
+                          placeholder="e.g., Morning Tour"
+                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
+                        />
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            </>
+                    {slotMessage && (
+                      <div className={`p-3 rounded-lg text-sm ${slotMessage.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                        {slotMessage.text}
+                      </div>
+                    )}
+                    <button
+                      type="submit"
+                      disabled={addingSlot || batchSelectedIds.length === 0}
+                      className="flex items-center gap-2 bg-[#134137] text-white px-6 py-2 rounded-lg font-bold hover:bg-[#0d2e24] transition-colors disabled:opacity-50"
+                    >
+                      <Plus className="w-4 h-4" />
+                      {addingSlot ? 'Adding...' : `Add Slot to ${batchSelectedIds.length} ${batchSelectedIds.length === 1 ? 'Property' : 'Properties'}`}
+                    </button>
+                  </form>
+                ) : (
+                  <div className="border border-gray-200 rounded-xl overflow-hidden">
+                    <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+                      <h3 className="font-bold text-[#134137]">Slots for Selected Properties</h3>
+                      <button
+                        type="button"
+                        onClick={() => fetchBatchSlots(batchSelectedIds)}
+                        disabled={batchSelectedIds.length === 0 || batchSlotsLoading}
+                        className="text-sm font-semibold text-[#134137] hover:underline disabled:opacity-40 disabled:no-underline"
+                      >
+                        {batchSlotsLoading ? 'Loading...' : 'Load / Refresh Slots'}
+                      </button>
+                    </div>
+                    {batchSelectedIds.length === 0 ? (
+                      <p className="text-gray-400 text-sm italic py-8 text-center">Select properties above, then load their slots.</p>
+                    ) : batchSlotsLoading ? (
+                      <p className="text-gray-400 text-sm italic py-8 text-center">Loading slots...</p>
+                    ) : batchSlots.length === 0 ? (
+                      <p className="text-gray-400 text-sm italic py-8 text-center">No slots loaded yet. Click "Load / Refresh Slots" above.</p>
+                    ) : (
+                      <div className="divide-y divide-gray-100">
+                        {properties
+                          .filter(p => batchSelectedIds.includes(p.id))
+                          .map(p => {
+                            const propSlots = batchSlots.filter(s => s.property_id === p.id);
+                            if (propSlots.length === 0) return null;
+                            return (
+                              <div key={p.id} className="px-4 py-3">
+                                <p className="font-semibold text-sm text-[#134137] mb-2">{p.title} — {p.city}</p>
+                                <div className="space-y-2">
+                                  {propSlots.map(slot => (
+                                    <div key={slot.id} className={`rounded-lg border p-3 ${slot.is_active ? 'border-gray-200 bg-white' : 'border-gray-100 bg-gray-50'}`}>
+                                      {editingBatchSlotId === slot.id ? (
+                                        <div className="space-y-3">
+                                          <div className="grid sm:grid-cols-3 gap-3">
+                                            <div>
+                                              <label className="block text-xs font-medium text-[#134137] mb-1">Date *</label>
+                                              <input
+                                                type="date"
+                                                value={editBatchSlotForm.slot_date}
+                                                onChange={(e) => setEditBatchSlotForm(prev => ({ ...prev, slot_date: e.target.value }))}
+                                                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
+                                              />
+                                            </div>
+                                            <div>
+                                              <label className="block text-xs font-medium text-[#134137] mb-1">Time *</label>
+                                              <input
+                                                type="time"
+                                                value={editBatchSlotForm.slot_time}
+                                                onChange={(e) => setEditBatchSlotForm(prev => ({ ...prev, slot_time: e.target.value }))}
+                                                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
+                                              />
+                                            </div>
+                                            <div>
+                                              <label className="block text-xs font-medium text-[#134137] mb-1">Label</label>
+                                              <input
+                                                type="text"
+                                                value={editBatchSlotForm.label}
+                                                onChange={(e) => setEditBatchSlotForm(prev => ({ ...prev, label: e.target.value }))}
+                                                placeholder="Optional"
+                                                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
+                                              />
+                                            </div>
+                                          </div>
+                                          <div className="flex gap-2">
+                                            <button
+                                              type="button"
+                                              onClick={() => handleBatchSlotEditSave(slot.id)}
+                                              disabled={!editBatchSlotForm.slot_date || !editBatchSlotForm.slot_time}
+                                              className="px-4 py-1.5 bg-[#134137] text-white text-sm font-bold rounded-lg hover:bg-[#0d2e24] transition-colors disabled:opacity-50"
+                                            >
+                                              Save
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => setEditingBatchSlotId(null)}
+                                              className="px-4 py-1.5 bg-gray-200 text-gray-700 text-sm font-bold rounded-lg hover:bg-gray-300 transition-colors"
+                                            >
+                                              Cancel
+                                            </button>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="flex flex-wrap gap-2 items-center justify-between">
+                                          <div>
+                                            <p className={`font-semibold text-sm ${slot.is_active ? 'text-[#134137]' : 'text-gray-400 line-through'}`}>
+                                              {formatSlotDate(slot.slot_date)}
+                                            </p>
+                                            <p className="text-xs text-gray-500 mt-0.5">
+                                              {formatSlotTime(slot.slot_time)}
+                                              {slot.label && <span className="ml-2 font-medium text-[#134137]/70">· {slot.label}</span>}
+                                            </p>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                            <button
+                                              type="button"
+                                              onClick={() => handleBatchToggleSlot(slot.id, slot.is_active)}
+                                              className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${slot.is_active ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-gray-200 text-gray-500 hover:bg-gray-300'}`}
+                                            >
+                                              {slot.is_active ? 'Active' : 'Inactive'}
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => { setEditingBatchSlotId(slot.id); setEditBatchSlotForm({ slot_date: slot.slot_date, slot_time: slot.slot_time, label: slot.label || '' }); }}
+                                              className="px-3 py-1 text-xs font-bold text-[#134137] hover:bg-[#134137]/10 rounded-lg transition-colors"
+                                              title="Edit slot"
+                                            >
+                                              Edit
+                                            </button>
+                                            <button
+                                              type="button"
+                                              onClick={() => handleBatchDeleteSlot(slot.id)}
+                                              className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                              title="Delete slot"
+                                            >
+                                              <Trash2 className="w-4 h-4" />
+                                            </button>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          })
+                        }
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

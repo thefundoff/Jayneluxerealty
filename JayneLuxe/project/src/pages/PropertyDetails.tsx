@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, Bed, Bath, Maximize, MapPin, Car, Calendar, TreePine, Waves, ChevronLeft, ChevronRight, X, Tag, Clock, Rotate3d as Rotate3D } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { formatNaira } from '../lib/currency';
@@ -140,7 +140,7 @@ export const PropertyDetails = ({ propertyId, onBack }: PropertyDetailsProps) =>
 
     const whatsappMessage = `Hello! I would like to book a property tour.\n\n*Property Details:*\nProperty: ${property.title}\nLocation: ${property.location}, ${property.city}\nPrice: ${priceInfo}\n\n*Tour Details:*\nName: ${name}\nPhone: ${phone}\n${email ? `Email: ${email}\n` : ''}Date: ${formattedDate}${slotLabel}\nTime: ${formattedTime}\n${message ? `\nAdditional Message:\n${message}` : ''}\n\nLooking forward to viewing this property!`;
 
-    const realtorPhone = '2348163081513';
+    const realtorPhone = '2348104416929';
     const whatsappUrl = `https://wa.me/${realtorPhone}?text=${encodeURIComponent(whatsappMessage)}`;
 
     window.open(whatsappUrl, '_blank');

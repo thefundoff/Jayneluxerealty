@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Search, DollarSign, ChevronDown, Calendar, MessageCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { PropertyWithImages } from '../lib/database.types';
@@ -58,7 +58,7 @@ export const Properties = ({ onPropertyClick }: PropertiesProps) => {
     }
 
     if (propertyType) {
-      filtered = filtered.filter(property => property.area_type === propertyType);
+      filtered = filtered.filter(property => property.property_type === propertyType);
     }
 
     if (areaType) {
@@ -185,23 +185,26 @@ export const Properties = ({ onPropertyClick }: PropertiesProps) => {
             <div className="grid md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Property Category
+                  Property Type
                 </label>
                 <select
                   value={propertyType}
                   onChange={(e) => setPropertyType(e.target.value)}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none transition-all bg-white"
                 >
-                  <option value="">All Properties</option>
-                  <option value="prime">Prime Areas</option>
-                  <option value="emerging">Emerging Areas</option>
-                  <option value="suburb">Suburb</option>
+                  <option value="">All Property Types</option>
+                  <option value="house">House</option>
+                  <option value="apartment">Apartment</option>
+                  <option value="villa">Villa</option>
+                  <option value="waterfront">Waterfront</option>
+                  <option value="estate land">Estate Land</option>
+                  <option value="hectare land">Hectare Land</option>
                 </select>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Estate Lands
+                  Estate Area Type
                 </label>
                 <select
                   value={areaType}
@@ -249,7 +252,7 @@ export const Properties = ({ onPropertyClick }: PropertiesProps) => {
             <div className="mt-4 p-4 bg-gray-50 rounded-lg">
               <p className="text-sm text-gray-600">
                 Showing properties
-                {propertyType && <span className="font-semibold"> in {propertyType.charAt(0).toUpperCase() + propertyType.slice(1)} category</span>}
+                {propertyType && <span className="font-semibold"> of type {propertyType.charAt(0).toUpperCase() + propertyType.slice(1)}</span>}
                 {areaType && <span className="font-semibold"> in {areaType.charAt(0).toUpperCase() + areaType.slice(1)} areas</span>}
                 {minPrice && <span className="font-semibold"> from {formatNaira(parseFloat(minPrice))}</span>}
                 {maxPrice && <span className="font-semibold"> up to {formatNaira(parseFloat(maxPrice))}</span>}
