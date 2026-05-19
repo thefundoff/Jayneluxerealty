@@ -31,6 +31,7 @@ interface PropertyForm {
   discount_percentage: string;
   discount_price: string;
   discount_end_date: string;
+  developer: string;
 }
 
 interface VariantRow {
@@ -87,8 +88,12 @@ export const Admin = () => {
     discount_percentage: '',
     discount_price: '',
     discount_end_date: '',
+    developer: '',
   });
   const [variants, setVariants] = useState<VariantRow[]>([]);
+  const [listSearchDeveloper, setListSearchDeveloper] = useState('');
+  const [listFilterType, setListFilterType] = useState('');
+  const [listFilterAreaType, setListFilterAreaType] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState('');
   const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -296,6 +301,7 @@ export const Admin = () => {
         discount_percentage: form.discount_percentage ? parseFloat(form.discount_percentage) : null,
         discount_price: form.discount_price ? parseFloat(stripCommas(form.discount_price)) : null,
         discount_end_date: form.discount_end_date || null,
+        developer: form.developer.trim() || null,
       };
 
       let propertyId: string;
@@ -393,6 +399,7 @@ export const Admin = () => {
         discount_percentage: '',
         discount_price: '',
         discount_end_date: '',
+        developer: '',
       });
       setImageFiles([]);
       setImagePreviews([]);
@@ -433,6 +440,7 @@ export const Admin = () => {
         discount_percentage: property.discount_percentage?.toString() || '',
         discount_price: property.discount_price ? Number(property.discount_price).toLocaleString('en-US') : '',
         discount_end_date: property.discount_end_date || '',
+        developer: property.developer || '',
       });
       setEditingId(property.id);
       setTab('add');
@@ -481,6 +489,7 @@ export const Admin = () => {
       discount_percentage: '',
       discount_price: '',
       discount_end_date: '',
+      developer: '',
     });
     setImageFiles([]);
     setImagePreviews([]);
@@ -558,10 +567,12 @@ export const Admin = () => {
   };
 
   const toggleSelectAll = () => {
-    if (selectedProperties.length === properties.length) {
-      setSelectedProperties([]);
+    const visibleIds = filteredProperties.map(p => p.id);
+    const allVisible = visibleIds.every(id => selectedProperties.includes(id));
+    if (allVisible && visibleIds.length > 0) {
+      setSelectedProperties(prev => prev.filter(id => !visibleIds.includes(id)));
     } else {
-      setSelectedProperties(properties.map(p => p.id));
+      setSelectedProperties(prev => [...new Set([...prev, ...visibleIds])]);
     }
   };
 
@@ -651,6 +662,13 @@ export const Admin = () => {
       setConfirmPassword('');
     }
   };
+
+  const filteredProperties = properties.filter(p => {
+    if (listSearchDeveloper && !(p.developer || '').toLowerCase().includes(listSearchDeveloper.toLowerCase())) return false;
+    if (listFilterType && p.property_type !== listFilterType) return false;
+    if (listFilterAreaType && p.area_type !== listFilterAreaType) return false;
+    return true;
+  });
 
   if (auth.isLoading) {
     return (
@@ -785,7 +803,7 @@ export const Admin = () => {
               }`}
             >
               <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span>Inspection Slots</span>
+              <span>Inspection Times</span>
             </button>
           </div>
         </div>
@@ -980,6 +998,22 @@ export const Admin = () => {
                     <option value="emerging">Emerging Areas</option>
                     <option value="suburb">Suburb</option>
                   </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-[#134137] mb-2">
+                    Developer Name
+                    <span className="ml-2 text-xs font-normal text-gray-400 bg-gray-100 px-2 py-0.5 rounded">Admin only</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="developer"
+                    value={form.developer}
+                    onChange={handleFormChange}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
+                    placeholder="e.g., Crest Homes Limited"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">Not shown to the public</p>
                 </div>
 
                 <div>
@@ -1267,6 +1301,62 @@ export const Admin = () => {
 
         {tab === 'list' && (
           <div className="bg-white rounded-xl shadow-lg overflow-hidden">
+            {/* Search & Filter Bar */}
+            <div className="p-4 border-b border-gray-100 bg-gray-50 space-y-3">
+              <div className="flex flex-wrap gap-3 items-end">
+                <div className="flex-1 min-w-[180px]">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Search by Developer</label>
+                  <input
+                    type="text"
+                    value={listSearchDeveloper}
+                    onChange={e => setListSearchDeveloper(e.target.value)}
+                    placeholder="Developer name..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
+                  />
+                </div>
+                <div className="flex-1 min-w-[160px]">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Property Type</label>
+                  <select
+                    value={listFilterType}
+                    onChange={e => setListFilterType(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
+                  >
+                    <option value="">All Types</option>
+                    <option value="house">House</option>
+                    <option value="apartment">Apartment</option>
+                    <option value="villa">Villa</option>
+                    <option value="waterfront">Waterfront</option>
+                    <option value="estate land">Estate Land</option>
+                    <option value="hectare land">Hectare Land</option>
+                  </select>
+                </div>
+                <div className="flex-1 min-w-[160px]">
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Estate Area Type</label>
+                  <select
+                    value={listFilterAreaType}
+                    onChange={e => setListFilterAreaType(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
+                  >
+                    <option value="">All Areas</option>
+                    <option value="prime">Prime Areas</option>
+                    <option value="emerging">Emerging Areas</option>
+                    <option value="suburb">Suburb</option>
+                  </select>
+                </div>
+                {(listSearchDeveloper || listFilterType || listFilterAreaType) && (
+                  <button
+                    onClick={() => { setListSearchDeveloper(''); setListFilterType(''); setListFilterAreaType(''); }}
+                    className="px-3 py-2 text-sm text-gray-500 hover:text-red-600 border border-gray-300 rounded-lg hover:border-red-300 transition-colors whitespace-nowrap"
+                  >
+                    Clear Filters
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-gray-400">
+                Showing {filteredProperties.length} of {properties.length} {properties.length === 1 ? 'property' : 'properties'}
+              </p>
+            </div>
+
             {message && (
               <div
                 className={`p-4 m-4 rounded-lg ${
@@ -1295,7 +1385,7 @@ export const Admin = () => {
 
             {/* Mobile card list */}
             <div className="sm:hidden divide-y divide-gray-100">
-              {properties.map((property) => (
+              {filteredProperties.map((property) => (
                 <div key={property.id} className="p-4 flex items-start gap-3">
                   <input
                     type="checkbox"
@@ -1337,7 +1427,7 @@ export const Admin = () => {
                     <th className="px-6 py-4 text-left">
                       <input
                         type="checkbox"
-                        checked={selectedProperties.length === properties.length && properties.length > 0}
+                        checked={filteredProperties.length > 0 && filteredProperties.every(p => selectedProperties.includes(p.id))}
                         onChange={toggleSelectAll}
                         className="w-4 h-4 cursor-pointer"
                       />
@@ -1346,12 +1436,13 @@ export const Admin = () => {
                     <th className="px-6 py-4 text-left font-bold text-[#134137]">City</th>
                     <th className="px-6 py-4 text-left font-bold text-[#134137]">Price</th>
                     <th className="px-6 py-4 text-left font-bold text-[#134137]">Type</th>
+                    <th className="px-6 py-4 text-left font-bold text-[#134137]">Developer</th>
                     <th className="px-6 py-4 text-left font-bold text-[#134137]">Beds/Baths</th>
                     <th className="px-6 py-4 text-left font-bold text-[#134137]">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {properties.map((property) => (
+                  {filteredProperties.map((property) => (
                     <tr key={property.id} className="border-b hover:bg-gray-50">
                       <td className="px-6 py-4">
                         <input
@@ -1365,6 +1456,7 @@ export const Admin = () => {
                       <td className="px-6 py-4 text-gray-600">{property.city}</td>
                       <td className="px-6 py-4 font-bold text-[#F3CF92]">₦{property.price.toLocaleString()}</td>
                       <td className="px-6 py-4 capitalize text-gray-600">{property.property_type}</td>
+                      <td className="px-6 py-4 text-gray-600">{property.developer || <span className="text-gray-300 italic">—</span>}</td>
                       <td className="px-6 py-4 text-gray-600">{property.bedrooms}/{property.bathrooms}</td>
                       <td className="px-6 py-4">
                         <div className="flex space-x-2">
@@ -1390,9 +1482,9 @@ export const Admin = () => {
               </table>
             </div>
 
-            {properties.length === 0 && (
+            {filteredProperties.length === 0 && (
               <div className="p-8 text-center text-gray-600">
-                No properties found
+                {properties.length === 0 ? 'No properties found' : 'No properties match the current filters'}
               </div>
             )}
           </div>

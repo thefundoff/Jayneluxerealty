@@ -34,6 +34,7 @@ export interface Database {
           discount_percentage: number | null
           discount_price: number | null
           discount_end_date: string | null
+          developer: string | null
           created_at: string
         }
         Insert: {
@@ -60,6 +61,7 @@ export interface Database {
           discount_percentage?: number | null
           discount_price?: number | null
           discount_end_date?: string | null
+          developer?: string | null
           created_at?: string
         }
         Update: {
@@ -86,6 +88,7 @@ export interface Database {
           discount_percentage?: number | null
           discount_price?: number | null
           discount_end_date?: string | null
+          developer?: string | null
           created_at?: string
         }
       }
