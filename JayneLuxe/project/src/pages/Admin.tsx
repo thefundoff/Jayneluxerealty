@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Lock, LogOut, Plus, List, X, Upload, CreditCard as Edit2, Trash2, Eye, EyeOff, Settings, Calendar } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import type { Database } from '../lib/database.types';
+import type { Database, PropertyImage } from '../lib/database.types';
 
 interface AdminAuthState {
   isAuthenticated: boolean;
@@ -98,6 +98,8 @@ export const Admin = () => {
   const [message, setMessage] = useState('');
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [existingImages, setExistingImages] = useState<PropertyImage[]>([]);
+  const [imagesToDelete, setImagesToDelete] = useState<string[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
@@ -227,6 +229,11 @@ export const Admin = () => {
     setImagePreviews(prev => prev.filter((_, i) => i !== index));
   };
 
+  const handleRemoveExistingImage = (id: string) => {
+    setExistingImages(prev => prev.filter(img => img.id !== id));
+    setImagesToDelete(prev => [...prev, id]);
+  };
+
   const uploadPropertyImage = async (file: File, propertyId: string): Promise<string | null> => {
     try {
       const fileExt = file.name.split('.').pop();
@@ -354,6 +361,10 @@ export const Admin = () => {
         if (variantError) throw new Error(`Failed to save variants: ${variantError.message}`);
       }
 
+      if (imagesToDelete.length > 0) {
+        await supabase.from('property_images').delete().in('id', imagesToDelete);
+      }
+
       if (imageFiles.length > 0) {
         const imageUploads = imageFiles.map(async (file, index) => {
           const imageUrl = await uploadPropertyImage(file, propertyId);
@@ -411,6 +422,8 @@ export const Admin = () => {
       });
       setImageFiles([]);
       setImagePreviews([]);
+      setExistingImages([]);
+      setImagesToDelete([]);
       setVariants([]);
       setEditingId(null);
       await fetchProperties();
@@ -467,6 +480,13 @@ export const Admin = () => {
           price: Number(v.price).toLocaleString('en-US'),
         }))
       );
+      const { data: existingImgs } = await supabase
+        .from('property_images')
+        .select('*')
+        .eq('property_id', property.id)
+        .order('display_order', { ascending: true });
+      setExistingImages(existingImgs || []);
+      setImagesToDelete([]);
     } catch (err) {
       console.error('Edit error:', err);
       setMessage('Failed to open edit form: ' + (err instanceof Error ? err.message : String(err)));
@@ -501,6 +521,8 @@ export const Admin = () => {
     });
     setImageFiles([]);
     setImagePreviews([]);
+    setExistingImages([]);
+    setImagesToDelete([]);
     setVariants([]);
     setEditingId(null);
     setMessage('');
@@ -1269,32 +1291,68 @@ export const Admin = () => {
 
               <div>
                 <label className="block text-sm font-medium text-[#134137] mb-2">
-                  Property Images {imagePreviews.length > 0 && `(${imagePreviews.length})`}
+                  Property Images {(existingImages.length + imagePreviews.length) > 0 && `(${existingImages.length + imagePreviews.length})`}
                 </label>
 
+                {/* Existing saved images — visible when editing */}
+                {existingImages.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Current Images (hover to remove)</p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {existingImages.map((img, index) => (
+                        <div key={img.id} className="relative group">
+                          <img
+                            src={img.image_url}
+                            alt={`Current image ${index + 1}`}
+                            className="w-full h-40 object-cover rounded-lg"
+                          />
+                          {img.is_primary && (
+                            <div className="absolute top-2 left-2 bg-[#F3CF92] text-[#134137] px-2 py-1 rounded text-xs font-bold">
+                              Primary
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveExistingImage(img.id)}
+                            className="absolute top-2 right-2 bg-red-600 text-white p-1.5 rounded-full hover:bg-red-700 transition-colors opacity-0 group-hover:opacity-100"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* New images staged for upload */}
                 {imagePreviews.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
-                    {imagePreviews.map((preview, index) => (
-                      <div key={index} className="relative group">
-                        <img
-                          src={preview}
-                          alt={`Property preview ${index + 1}`}
-                          className="w-full h-40 object-cover rounded-lg"
-                        />
-                        {index === 0 && (
-                          <div className="absolute top-2 left-2 bg-[#F3CF92] text-[#134137] px-2 py-1 rounded text-xs font-bold">
-                            Primary
-                          </div>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveImage(index)}
-                          className="absolute top-2 right-2 bg-red-600 text-white p-1.5 rounded-full hover:bg-red-700 transition-colors opacity-0 group-hover:opacity-100"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
+                  <div className="mb-4">
+                    {existingImages.length > 0 && (
+                      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">New Images (pending upload)</p>
+                    )}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {imagePreviews.map((preview, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={preview}
+                            alt={`New image ${index + 1}`}
+                            className="w-full h-40 object-cover rounded-lg border-2 border-dashed border-[#F3CF92]"
+                          />
+                          {index === 0 && existingImages.length === 0 && (
+                            <div className="absolute top-2 left-2 bg-[#F3CF92] text-[#134137] px-2 py-1 rounded text-xs font-bold">
+                              Primary
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveImage(index)}
+                            className="absolute top-2 right-2 bg-red-600 text-white p-1.5 rounded-full hover:bg-red-700 transition-colors opacity-0 group-hover:opacity-100"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
@@ -1302,7 +1360,7 @@ export const Admin = () => {
                   <div className="flex flex-col items-center justify-center pt-5 pb-6">
                     <Upload className="w-10 h-10 text-gray-400 mb-2" />
                     <p className="mb-2 text-sm text-gray-500 font-semibold">
-                      {imagePreviews.length > 0 ? 'Add more images' : 'Click to upload property images'}
+                      {(existingImages.length + imagePreviews.length) > 0 ? 'Add more images' : 'Click to upload property images'}
                     </p>
                     <p className="text-xs text-gray-500">PNG, JPG or WEBP (MAX. 5MB each)</p>
                   </div>
