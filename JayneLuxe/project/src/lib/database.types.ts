@@ -144,6 +144,35 @@ export interface Database {
           created_at?: string
         }
       }
+      inspection_slots: {
+        Row: {
+          id: string
+          property_id: string
+          slot_date: string
+          slot_time: string
+          label: string | null
+          is_active: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          property_id: string
+          slot_date: string
+          slot_time: string
+          label?: string | null
+          is_active?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          property_id?: string
+          slot_date?: string
+          slot_time?: string
+          label?: string | null
+          is_active?: boolean
+          created_at?: string
+        }
+      }
     }
   }
 }
@@ -151,6 +180,7 @@ export interface Database {
 export type Property = Database['public']['Tables']['properties']['Row'];
 export type PropertyImage = Database['public']['Tables']['property_images']['Row'];
 export type PropertyVariant = Database['public']['Tables']['property_variants']['Row'];
+export type InspectionSlot = Database['public']['Tables']['inspection_slots']['Row'];
 
 export interface PropertyWithImages extends Property {
   property_images: PropertyImage[];

@@ -22,10 +22,11 @@ export const PropertyDetails = ({ propertyId, onBack }: PropertyDetailsProps) =>
     name: '',
     phone: '',
     email: '',
-    tourDate: '',
-    tourTime: '',
     message: '',
   });
+  const [inspectionSlots, setInspectionSlots] = useState<{ id: string; slot_date: string; slot_time: string; label: string | null }[]>([]);
+  const [selectedSlotId, setSelectedSlotId] = useState('');
+  const [slotsLoading, setSlotsLoading] = useState(false);
 
   useEffect(() => {
     fetchProperty();
@@ -78,22 +79,52 @@ export const PropertyDetails = ({ propertyId, onBack }: PropertyDetailsProps) =>
     });
   };
 
+  const openBookingModal = async () => {
+    setShowBookingModal(true);
+    setSlotsLoading(true);
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      const { data } = await supabase
+        .from('inspection_slots')
+        .select('id, slot_date, slot_time, label')
+        .eq('property_id', propertyId)
+        .eq('is_active', true)
+        .gte('slot_date', today)
+        .order('slot_date', { ascending: true })
+        .order('slot_time', { ascending: true });
+      setInspectionSlots(data || []);
+    } finally {
+      setSlotsLoading(false);
+    }
+  };
+
+  const closeBookingModal = () => {
+    setShowBookingModal(false);
+    setSelectedSlotId('');
+  };
+
   const handleBookTour = () => {
     if (!property) return;
 
-    const { name, phone, email, tourDate, tourTime, message } = bookingData;
+    const { name, phone, email, message } = bookingData;
+    const selectedSlot = inspectionSlots.find(s => s.id === selectedSlotId);
 
-    if (!name || !phone || !tourDate || !tourTime) {
+    if (!name || !phone || !selectedSlot) {
       alert('Please fill in all required fields');
       return;
     }
 
-    const formattedDate = new Date(tourDate).toLocaleDateString('en-US', {
+    const formattedDate = new Date(selectedSlot.slot_date + 'T12:00:00').toLocaleDateString('en-US', {
       weekday: 'long',
       year: 'numeric',
       month: 'long',
       day: 'numeric',
     });
+
+    const [h, m] = selectedSlot.slot_time.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const formattedTime = `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`;
+    const slotLabel = selectedSlot.label ? ` (${selectedSlot.label})` : '';
 
     const selectedVariant = property.property_variants?.find(v => v.id === selectedVariantId) ?? null;
     const hasActiveDiscount = !selectedVariant &&
@@ -101,16 +132,13 @@ export const PropertyDetails = ({ propertyId, onBack }: PropertyDetailsProps) =>
       property.discount_end_date &&
       new Date(property.discount_end_date) > new Date();
 
-    const displayPrice = selectedVariant
-      ? selectedVariant.price
-      : hasActiveDiscount ? property.discount_price : property.price;
     const priceInfo = selectedVariant
       ? `${formatNaira(selectedVariant.price)} (${selectedVariant.label})`
       : hasActiveDiscount
         ? `${formatNaira(property.discount_price!)} (${property.discount_percentage}% OFF - was ${formatNaira(property.price)})`
         : formatNaira(property.price);
 
-    const whatsappMessage = `Hello! I would like to book a property tour.\n\n*Property Details:*\nProperty: ${property.title}\nLocation: ${property.location}, ${property.city}\nPrice: ${priceInfo}\n\n*Tour Details:*\nName: ${name}\nPhone: ${phone}\n${email ? `Email: ${email}\n` : ''}Date: ${formattedDate}\nTime: ${tourTime}\n${message ? `\nAdditional Message:\n${message}` : ''}\n\nLooking forward to viewing this property!`;
+    const whatsappMessage = `Hello! I would like to book a property tour.\n\n*Property Details:*\nProperty: ${property.title}\nLocation: ${property.location}, ${property.city}\nPrice: ${priceInfo}\n\n*Tour Details:*\nName: ${name}\nPhone: ${phone}\n${email ? `Email: ${email}\n` : ''}Date: ${formattedDate}${slotLabel}\nTime: ${formattedTime}\n${message ? `\nAdditional Message:\n${message}` : ''}\n\nLooking forward to viewing this property!`;
 
     const realtorPhone = '2348163081513';
     const whatsappUrl = `https://wa.me/${realtorPhone}?text=${encodeURIComponent(whatsappMessage)}`;
@@ -118,14 +146,8 @@ export const PropertyDetails = ({ propertyId, onBack }: PropertyDetailsProps) =>
     window.open(whatsappUrl, '_blank');
 
     setShowBookingModal(false);
-    setBookingData({
-      name: '',
-      phone: '',
-      email: '',
-      tourDate: '',
-      tourTime: '',
-      message: '',
-    });
+    setSelectedSlotId('');
+    setBookingData({ name: '', phone: '', email: '', message: '' });
   };
 
   if (loading) {
@@ -439,7 +461,7 @@ export const PropertyDetails = ({ propertyId, onBack }: PropertyDetailsProps) =>
               </div>
 
               <button
-                onClick={() => setShowBookingModal(true)}
+                onClick={openBookingModal}
                 className="block w-full bg-[#F3CF92] text-[#134137] text-center py-4 rounded-lg font-bold text-lg hover:bg-[#e6c07f] transition-all hover:scale-105 shadow-md"
               >
                 Book an Inspection
@@ -481,7 +503,7 @@ export const PropertyDetails = ({ propertyId, onBack }: PropertyDetailsProps) =>
             <div className="flex justify-between items-center mb-6">
               <h3 className="text-2xl font-bold text-[#134137]">Book a Property Tour</h3>
               <button
-                onClick={() => setShowBookingModal(false)}
+                onClick={closeBookingModal}
                 className="text-gray-500 hover:text-gray-700 transition-colors"
               >
                 <X className="w-6 h-6" />
@@ -535,31 +557,52 @@ export const PropertyDetails = ({ propertyId, onBack }: PropertyDetailsProps) =>
 
               <div>
                 <label className="block text-sm font-medium text-[#134137] mb-2">
-                  Preferred Tour Date *
+                  Select Inspection Date &amp; Time *
                 </label>
-                <input
-                  type="date"
-                  name="tourDate"
-                  value={bookingData.tourDate}
-                  onChange={handleBookingChange}
-                  min={new Date().toISOString().split('T')[0]}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-[#134137] mb-2">
-                  Preferred Time *
-                </label>
-                <input
-                  type="time"
-                  name="tourTime"
-                  value={bookingData.tourTime}
-                  onChange={handleBookingChange}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
-                  required
-                />
+                {slotsLoading ? (
+                  <div className="flex items-center justify-center py-6">
+                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-[#134137] border-t-[#F3CF92]" />
+                  </div>
+                ) : inspectionSlots.length === 0 ? (
+                  <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 text-amber-800 text-sm">
+                    No inspection dates are currently available. Please{' '}
+                    <a href="#/contact" className="font-semibold underline" onClick={closeBookingModal}>
+                      contact us
+                    </a>{' '}
+                    to schedule a visit.
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                    {inspectionSlots.map(slot => {
+                      const [h, min] = slot.slot_time.split(':').map(Number);
+                      const ampm = h >= 12 ? 'PM' : 'AM';
+                      const time = `${h % 12 || 12}:${String(min).padStart(2, '0')} ${ampm}`;
+                      const date = new Date(slot.slot_date + 'T12:00:00').toLocaleDateString('en-US', {
+                        weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+                      });
+                      return (
+                        <button
+                          key={slot.id}
+                          type="button"
+                          onClick={() => setSelectedSlotId(slot.id)}
+                          className={`w-full text-left px-4 py-3 rounded-xl border-2 transition-all ${
+                            selectedSlotId === slot.id
+                              ? 'border-[#F3CF92] bg-[#F3CF92]/10 shadow-sm'
+                              : 'border-gray-200 hover:border-[#134137]/40 bg-white'
+                          }`}
+                        >
+                          <div className="flex justify-between items-center">
+                            <span className="font-semibold text-[#134137] text-sm">{date}</span>
+                            <span className="text-sm text-gray-600">{time}</span>
+                          </div>
+                          {slot.label && (
+                            <p className="text-xs text-gray-500 mt-0.5">{slot.label}</p>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -580,12 +623,13 @@ export const PropertyDetails = ({ propertyId, onBack }: PropertyDetailsProps) =>
             <div className="mt-6 flex space-x-4">
               <button
                 onClick={handleBookTour}
-                className="flex-1 bg-[#F3CF92] text-[#134137] py-3 rounded-lg font-bold hover:bg-[#e6c07f] transition-colors"
+                disabled={inspectionSlots.length > 0 && !selectedSlotId}
+                className="flex-1 bg-[#F3CF92] text-[#134137] py-3 rounded-lg font-bold hover:bg-[#e6c07f] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Send via WhatsApp
               </button>
               <button
-                onClick={() => setShowBookingModal(false)}
+                onClick={closeBookingModal}
                 className="flex-1 bg-gray-200 text-[#134137] py-3 rounded-lg font-bold hover:bg-gray-300 transition-colors"
               >
                 Cancel

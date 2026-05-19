@@ -1,5 +1,5 @@
 ﻿import { useState, useEffect } from 'react';
-import { Lock, LogOut, Plus, List, X, Upload, CreditCard as Edit2, Trash2, Eye, EyeOff, Settings } from 'lucide-react';
+import { Lock, LogOut, Plus, List, X, Upload, CreditCard as Edit2, Trash2, Eye, EyeOff, Settings, Calendar } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Database } from '../lib/database.types';
 
@@ -41,12 +41,22 @@ interface VariantRow {
   price: string;
 }
 
+interface InspectionSlot {
+  id: string;
+  property_id: string;
+  slot_date: string;
+  slot_time: string;
+  label: string | null;
+  is_active: boolean;
+  created_at: string;
+}
+
 export const Admin = () => {
   const [auth, setAuth] = useState<AdminAuthState>({ isAuthenticated: false, isLoading: true });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [tab, setTab] = useState<'add' | 'list' | 'settings'>('add');
+  const [tab, setTab] = useState<'add' | 'list' | 'settings' | 'slots'>('add');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -86,6 +96,11 @@ export const Admin = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [selectedProperties, setSelectedProperties] = useState<string[]>([]);
+  const [slots, setSlots] = useState<InspectionSlot[]>([]);
+  const [selectedSlotPropertyId, setSelectedSlotPropertyId] = useState('');
+  const [slotForm, setSlotForm] = useState({ slot_date: '', slot_time: '', label: '' });
+  const [addingSlot, setAddingSlot] = useState(false);
+  const [slotMessage, setSlotMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -134,10 +149,14 @@ export const Admin = () => {
   };
 
   useEffect(() => {
-    if (auth.isAuthenticated && tab === 'list') {
-      fetchProperties();
-    }
+    if (!auth.isAuthenticated) return;
+    if (tab === 'list' || tab === 'slots') fetchProperties();
   }, [auth.isAuthenticated, tab]);
+
+  useEffect(() => {
+    if (selectedSlotPropertyId) fetchSlots();
+    else setSlots([]);
+  }, [selectedSlotPropertyId]);
 
   const formatPriceInput = (value: string): string => {
     const digits = value.replace(/[^0-9]/g, '');
@@ -546,6 +565,67 @@ export const Admin = () => {
     }
   };
 
+  const fetchSlots = async () => {
+    if (!selectedSlotPropertyId) return;
+    const { data } = await supabase
+      .from('inspection_slots')
+      .select('*')
+      .eq('property_id', selectedSlotPropertyId)
+      .order('slot_date', { ascending: true })
+      .order('slot_time', { ascending: true });
+    setSlots((data as InspectionSlot[]) || []);
+  };
+
+  const handleAddSlot = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedSlotPropertyId) {
+      setSlotMessage({ type: 'error', text: 'Please select a property first.' });
+      return;
+    }
+    if (!slotForm.slot_date || !slotForm.slot_time) {
+      setSlotMessage({ type: 'error', text: 'Date and time are required.' });
+      return;
+    }
+    setAddingSlot(true);
+    setSlotMessage(null);
+    const { error } = await supabase.from('inspection_slots').insert([{
+      property_id: selectedSlotPropertyId,
+      slot_date: slotForm.slot_date,
+      slot_time: slotForm.slot_time,
+      label: slotForm.label.trim() || null,
+    }]);
+    setAddingSlot(false);
+    if (error) {
+      setSlotMessage({ type: 'error', text: error.message });
+    } else {
+      setSlotMessage({ type: 'success', text: 'Slot added successfully!' });
+      setSlotForm({ slot_date: '', slot_time: '', label: '' });
+      await fetchSlots();
+      setTimeout(() => setSlotMessage(null), 3000);
+    }
+  };
+
+  const handleDeleteSlot = async (id: string) => {
+    await supabase.from('inspection_slots').delete().eq('id', id);
+    await fetchSlots();
+  };
+
+  const handleToggleSlot = async (id: string, current: boolean) => {
+    await supabase.from('inspection_slots').update({ is_active: !current }).eq('id', id);
+    await fetchSlots();
+  };
+
+  const formatSlotTime = (time: string): string => {
+    const [h, m] = time.split(':').map(Number);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    return `${h % 12 || 12}:${String(m).padStart(2, '0')} ${ampm}`;
+  };
+
+  const formatSlotDate = (date: string): string =>
+    new Date(date + 'T12:00:00').toLocaleDateString('en-US', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    });
+
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordMessage(null);
@@ -695,6 +775,17 @@ export const Admin = () => {
             >
               <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
               <span>Settings</span>
+            </button>
+            <button
+              onClick={() => setTab('slots')}
+              className={`flex items-center space-x-2 px-3 sm:px-5 py-2 rounded-lg font-bold transition-all text-sm sm:text-base whitespace-nowrap ${
+                tab === 'slots'
+                  ? 'bg-[#F3CF92] text-[#134137]'
+                  : 'bg-white/10 text-white border border-white/30 hover:bg-white/20'
+              }`}
+            >
+              <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>Inspection Slots</span>
             </button>
           </div>
         </div>
@@ -1368,6 +1459,145 @@ export const Admin = () => {
                 {updatingPassword ? 'Updating...' : 'Update Password'}
               </button>
             </form>
+          </div>
+        )}
+
+        {tab === 'slots' && (
+          <div className="bg-white rounded-xl shadow-lg p-4 sm:p-8">
+            <h2 className="text-xl sm:text-2xl font-bold text-[#134137] mb-2">Inspection Slots</h2>
+            <p className="text-gray-500 text-sm mb-6">
+              Select a property, then add specific inspection dates and times for it. Each property has its own schedule.
+            </p>
+
+            {/* Property selector */}
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-[#134137] mb-2">Select Property *</label>
+              <select
+                value={selectedSlotPropertyId}
+                onChange={(e) => {
+                  setSelectedSlotPropertyId(e.target.value);
+                  setSlots([]);
+                  setSlotMessage(null);
+                }}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
+              >
+                <option value="">-- Choose a property --</option>
+                {properties.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {p.title} — {p.city}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {!selectedSlotPropertyId ? (
+              <div className="text-center text-gray-400 py-12 border-2 border-dashed border-gray-200 rounded-xl">
+                Select a property above to manage its inspection slots.
+              </div>
+            ) : (
+            <>
+            {/* Add slot form */}
+            <form onSubmit={handleAddSlot} className="mb-8 border border-gray-200 rounded-xl p-4 sm:p-6 space-y-4">
+              <h3 className="font-bold text-[#134137] text-lg">Add New Slot</h3>
+              <div className="grid sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-[#134137] mb-2">Date *</label>
+                  <input
+                    type="date"
+                    value={slotForm.slot_date}
+                    min={new Date().toISOString().split('T')[0]}
+                    onChange={(e) => setSlotForm(prev => ({ ...prev, slot_date: e.target.value }))}
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#134137] mb-2">Time *</label>
+                  <input
+                    type="time"
+                    value={slotForm.slot_time}
+                    onChange={(e) => setSlotForm(prev => ({ ...prev, slot_time: e.target.value }))}
+                    required
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#134137] mb-2">Label (Optional)</label>
+                  <input
+                    type="text"
+                    value={slotForm.label}
+                    onChange={(e) => setSlotForm(prev => ({ ...prev, label: e.target.value }))}
+                    placeholder="e.g., Morning Tour"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none"
+                  />
+                </div>
+              </div>
+              {slotMessage && (
+                <div className={`p-3 rounded-lg text-sm ${slotMessage.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  {slotMessage.text}
+                </div>
+              )}
+              <button
+                type="submit"
+                disabled={addingSlot}
+                className="flex items-center gap-2 bg-[#134137] text-white px-6 py-2 rounded-lg font-bold hover:bg-[#0d2e24] transition-colors disabled:opacity-50"
+              >
+                <Plus className="w-4 h-4" />
+                {addingSlot ? 'Adding...' : 'Add Slot'}
+              </button>
+            </form>
+
+            {/* Slots list */}
+            <div className="space-y-3">
+              <h3 className="font-bold text-[#134137] text-lg">
+                All Slots ({slots.length})
+              </h3>
+              {slots.length === 0 ? (
+                <p className="text-gray-400 text-sm italic py-4 text-center">No inspection slots yet for this property. Add one above.</p>
+              ) : (
+                <div className="divide-y divide-gray-100 border border-gray-200 rounded-xl overflow-hidden">
+                  {slots.map(slot => (
+                    <div
+                      key={slot.id}
+                      className={`flex flex-wrap gap-3 items-center justify-between px-4 py-3 ${
+                        slot.is_active ? 'bg-white' : 'bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className={`font-semibold text-sm ${slot.is_active ? 'text-[#134137]' : 'text-gray-400 line-through'}`}>
+                          {formatSlotDate(slot.slot_date)}
+                        </p>
+                        <p className="text-sm text-gray-500 mt-0.5">
+                          {formatSlotTime(slot.slot_time)}
+                          {slot.label && <span className="ml-2 font-medium text-[#134137]/70">· {slot.label}</span>}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => handleToggleSlot(slot.id, slot.is_active)}
+                          className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${
+                            slot.is_active
+                              ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                              : 'bg-gray-200 text-gray-500 hover:bg-gray-300'
+                          }`}
+                        >
+                          {slot.is_active ? 'Active' : 'Inactive'}
+                        </button>
+                        <button
+                          onClick={() => handleDeleteSlot(slot.id)}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete slot"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            </>
+            )}
           </div>
         )}
 
