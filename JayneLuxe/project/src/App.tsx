@@ -7,6 +7,7 @@ import { PropertyDetails } from './pages/PropertyDetails';
 import { Contact } from './pages/Contact';
 import { Admin } from './pages/Admin';
 import { About } from './pages/About';
+import { Careers } from './pages/Careers';
 
 function App() {
   const { currentRoute, params, navigate } = useRouter();
@@ -30,6 +31,7 @@ function App() {
             contact: <Contact />,
             admin: <Admin />,
             about: <About />,
+            careers: <Careers />,
           }}
         </Router>
       </div>

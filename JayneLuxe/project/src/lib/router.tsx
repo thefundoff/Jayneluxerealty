@@ -1,6 +1,6 @@
 import { useState, useEffect, ReactNode } from 'react';
 
-export type Route = 'home' | 'property' | 'properties' | 'contact' | 'admin' | 'about';
+export type Route = 'home' | 'property' | 'properties' | 'contact' | 'admin' | 'about' | 'careers';
 
 export interface RouteParams {
   propertyId?: string;
@@ -31,6 +31,9 @@ export const useRouter = () => {
         setParams({});
       } else if (hash === '/about') {
         setCurrentRoute('about');
+        setParams({});
+      } else if (hash === '/careers') {
+        setCurrentRoute('careers');
         setParams({});
       }
 

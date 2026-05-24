@@ -189,3 +189,60 @@ export interface PropertyWithImages extends Property {
   property_images: PropertyImage[];
   property_variants: PropertyVariant[];
 }
+
+export interface JobOpening {
+  id: string;
+  title: string;
+  slug: string | null;
+  department: string | null;
+  location: string | null;
+  type: string;
+  experience_level: string | null;
+  salary_range: string | null;
+  commission_details: string | null;
+  description: string | null;
+  short_description: string | null;
+  full_description: string | null;
+  responsibilities: string | null;
+  requirements: string | null;
+  benefits_list: string | null;
+  is_active: boolean;
+  accept_applications: boolean;
+  application_deadline: string | null;
+  featured: boolean;
+  allow_supporting_docs: boolean;
+  created_at: string;
+}
+
+export interface JobApplication {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  position: string;
+  job_opening_id: string | null;
+  cover_letter: string | null;
+  cover_letter_url: string | null;
+  address: string | null;
+  linkedin_url: string | null;
+  portfolio_url: string | null;
+  supporting_doc_url: string | null;
+  consent_given: boolean;
+  resume_url: string;
+  years_experience: number | null;
+  status: string;
+  internal_notes: string | null;
+  created_at: string;
+  read: boolean;
+}
+
+export interface GeneralApplication {
+  id: string;
+  name: string;
+  email: string;
+  resume_url: string;
+  area_of_interest: string | null;
+  notes: string | null;
+  created_at: string;
+  read: boolean;
+}

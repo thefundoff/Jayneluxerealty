@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Lock, LogOut, Plus, List, X, Upload, CreditCard as Edit2, Trash2, Eye, EyeOff, Settings, Calendar } from 'lucide-react';
+import { Lock, LogOut, Plus, List, X, Upload, CreditCard as Edit2, Trash2, Eye, EyeOff, Settings, Calendar, Briefcase, FileText, ChevronDown, ChevronUp, Download, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import type { Database, PropertyImage } from '../lib/database.types';
+import type { Database, PropertyImage, JobOpening, JobApplication, GeneralApplication } from '../lib/database.types';
 
 interface AdminAuthState {
   isAuthenticated: boolean;
@@ -57,7 +57,7 @@ export const Admin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [tab, setTab] = useState<'add' | 'list' | 'settings' | 'slots'>('add');
+  const [tab, setTab] = useState<'add' | 'list' | 'settings' | 'slots' | 'openings' | 'applications' | 'general_apps'>('add');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -117,6 +117,36 @@ export const Admin = () => {
   const [editingBatchSlotId, setEditingBatchSlotId] = useState<string | null>(null);
   const [editBatchSlotForm, setEditBatchSlotForm] = useState({ slot_date: '', slot_time: '', label: '' });
 
+  // Job Openings state
+  const [jobOpenings, setJobOpenings] = useState<JobOpening[]>([]);
+  const [openingForm, setOpeningForm] = useState({
+    title: '', department: '', location: '', type: 'Full-time',
+    experience_level: '', salary_range: '', commission_details: '',
+    short_description: '', full_description: '',
+    responsibilities: '', requirements: '', benefits_list: '',
+    is_active: true, accept_applications: true,
+    application_deadline: '', featured: false, allow_supporting_docs: true,
+  });
+  const [editingOpeningId, setEditingOpeningId] = useState<string | null>(null);
+  const [savingOpening, setSavingOpening] = useState(false);
+  const [openingMessage, setOpeningMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Job Applications state
+  const [jobApplications, setJobApplications] = useState<JobApplication[]>([]);
+  const [loadingApplications, setLoadingApplications] = useState(false);
+  const [expandedApplicationId, setExpandedApplicationId] = useState<string | null>(null);
+  const [updatingApplicationId, setUpdatingApplicationId] = useState<string | null>(null);
+  const [applicationFilter, setApplicationFilter] = useState('all');
+  const [newApplicationsCount, setNewApplicationsCount] = useState(0);
+  const [savingNotes, setSavingNotes] = useState<string | null>(null);
+  const [notesValues, setNotesValues] = useState<Record<string, string>>({});
+
+  // General Applications state
+  const [generalApplications, setGeneralApplications] = useState<GeneralApplication[]>([]);
+  const [loadingGenApps, setLoadingGenApps] = useState(false);
+  const [expandedGenAppId, setExpandedGenAppId] = useState<string | null>(null);
+  const [newGenAppsCount, setNewGenAppsCount] = useState(0);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setAuth({ isAuthenticated: !!session, isLoading: false });
@@ -163,9 +193,190 @@ export const Admin = () => {
     }
   };
 
+  const fetchJobOpenings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('job_openings')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      setJobOpenings((data as JobOpening[]) || []);
+    } catch (error) {
+      console.error('Error fetching job openings:', error);
+    }
+  };
+
+  const fetchJobApplications = async () => {
+    setLoadingApplications(true);
+    try {
+      const { data, error } = await supabase
+        .from('job_applications')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      const apps = (data as JobApplication[]) || [];
+      setJobApplications(apps);
+      setNewApplicationsCount(apps.filter(a => !a.read).length);
+    } catch (error) {
+      console.error('Error fetching job applications:', error);
+    } finally {
+      setLoadingApplications(false);
+    }
+  };
+
+  const handleSaveOpening = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSavingOpening(true);
+    setOpeningMessage(null);
+    try {
+      if (editingOpeningId) {
+        const { error } = await supabase
+          .from('job_openings')
+          .update({ ...openingForm })
+          .eq('id', editingOpeningId);
+        if (error) throw error;
+        setOpeningMessage({ type: 'success', text: 'Opening updated successfully.' });
+      } else {
+        const { error } = await supabase.from('job_openings').insert({ ...openingForm });
+        if (error) throw error;
+        setOpeningMessage({ type: 'success', text: 'Opening added successfully.' });
+      }
+      setEditingOpeningId(null);
+      setOpeningForm({ title: '', department: '', location: '', type: 'Full-time', description: '', is_active: true });
+      fetchJobOpenings();
+    } catch (error) {
+      setOpeningMessage({ type: 'error', text: 'Failed to save. Please try again.' });
+    } finally {
+      setSavingOpening(false);
+    }
+  };
+
+  const handleDeleteOpening = async (id: string) => {
+    if (!confirm('Delete this job opening?')) return;
+    const { error } = await supabase.from('job_openings').delete().eq('id', id);
+    if (!error) fetchJobOpenings();
+  };
+
+  const handleEditOpening = (opening: JobOpening) => {
+    setEditingOpeningId(opening.id);
+    setOpeningForm({
+      title: opening.title,
+      department: opening.department || '',
+      location: opening.location || '',
+      type: opening.type,
+      experience_level: opening.experience_level || '',
+      salary_range: opening.salary_range || '',
+      commission_details: opening.commission_details || '',
+      short_description: opening.short_description || opening.description || '',
+      full_description: opening.full_description || '',
+      responsibilities: opening.responsibilities || '',
+      requirements: opening.requirements || '',
+      benefits_list: opening.benefits_list || '',
+      is_active: opening.is_active,
+      accept_applications: opening.accept_applications,
+      application_deadline: opening.application_deadline || '',
+      featured: opening.featured,
+      allow_supporting_docs: opening.allow_supporting_docs,
+    });
+    setOpeningMessage(null);
+  };
+
+  const handleUpdateApplicationStatus = async (id: string, status: string) => {
+    setUpdatingApplicationId(id);
+    const { error } = await supabase
+      .from('job_applications')
+      .update({ status, read: true })
+      .eq('id', id);
+    if (!error) {
+      setJobApplications(prev =>
+        prev.map(a => a.id === id ? { ...a, status, read: true } : a)
+      );
+      setNewApplicationsCount(prev => Math.max(0, prev - 1));
+    }
+    setUpdatingApplicationId(null);
+  };
+
+  const handleMarkApplicationRead = async (id: string) => {
+    const { error } = await supabase
+      .from('job_applications')
+      .update({ read: true })
+      .eq('id', id);
+    if (!error) {
+      setJobApplications(prev => prev.map(a => a.id === id ? { ...a, read: true } : a));
+      setNewApplicationsCount(prev => Math.max(0, prev - 1));
+    }
+  };
+
+  const handleDownloadResume = async (resumeUrl: string, applicantName: string, label = 'CV') => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('resumes')
+        .createSignedUrl(resumeUrl, 60);
+      if (error || !data?.signedUrl) throw new Error('Could not generate download link.');
+      const ext = resumeUrl.split('.').pop() || 'pdf';
+      const a = document.createElement('a');
+      a.href = data.signedUrl;
+      a.download = `${applicantName.replace(/\s+/g, '_')}_${label}.${ext}`;
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err) {
+      alert('Failed to download file. Please try again.');
+    }
+  };
+
+  const fetchGeneralApplications = async () => {
+    setLoadingGenApps(true);
+    try {
+      const { data, error } = await supabase
+        .from('general_applications')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      const apps = (data as GeneralApplication[]) || [];
+      setGeneralApplications(apps);
+      setNewGenAppsCount(apps.filter(a => !a.read).length);
+    } catch (err) {
+      console.error('Error fetching general applications:', err);
+    } finally {
+      setLoadingGenApps(false);
+    }
+  };
+
+  const handleSaveInternalNotes = async (appId: string) => {
+    setSavingNotes(appId);
+    const notes = notesValues[appId] ?? '';
+    const { error } = await supabase.from('job_applications').update({ internal_notes: notes }).eq('id', appId);
+    if (!error) setJobApplications(prev => prev.map(a => a.id === appId ? { ...a, internal_notes: notes } : a));
+    setSavingNotes(null);
+  };
+
+  const handleMarkGenAppRead = async (id: string) => {
+    const { error } = await supabase.from('general_applications').update({ read: true }).eq('id', id);
+    if (!error) {
+      setGeneralApplications(prev => prev.map(a => a.id === id ? { ...a, read: true } : a));
+      setNewGenAppsCount(prev => Math.max(0, prev - 1));
+    }
+  };
+
+  const handleDuplicateOpening = async (opening: JobOpening) => {
+    const { id, created_at, ...rest } = opening;
+    const { error } = await supabase.from('job_openings').insert({ ...rest, title: `${opening.title} (Copy)`, is_active: false });
+    if (!error) fetchJobOpenings();
+  };
+
+  const handleCloseApplications = async (id: string) => {
+    const { error } = await supabase.from('job_openings').update({ accept_applications: false }).eq('id', id);
+    if (!error) fetchJobOpenings();
+  };
+
   useEffect(() => {
     if (!auth.isAuthenticated) return;
     if (tab === 'list' || tab === 'slots') fetchProperties();
+    if (tab === 'openings') fetchJobOpenings();
+    if (tab === 'applications') fetchJobApplications();
+    if (tab === 'general_apps') fetchGeneralApplications();
   }, [auth.isAuthenticated, tab]);
 
   useEffect(() => {
@@ -877,6 +1088,49 @@ export const Admin = () => {
             >
               <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
               <span>Inspection Time Slots</span>
+            </button>
+            <button
+              onClick={() => setTab('openings')}
+              className={`flex items-center space-x-2 px-3 sm:px-5 py-2 rounded-lg font-bold transition-all text-sm sm:text-base whitespace-nowrap ${
+                tab === 'openings'
+                  ? 'bg-[#F3CF92] text-[#134137]'
+                  : 'bg-white/10 text-white border border-white/30 hover:bg-white/20'
+              }`}
+            >
+              <Briefcase className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>Job Openings</span>
+            </button>
+            <button
+              onClick={() => setTab('applications')}
+              className={`flex items-center space-x-2 px-3 sm:px-5 py-2 rounded-lg font-bold transition-all text-sm sm:text-base whitespace-nowrap ${
+                tab === 'applications'
+                  ? 'bg-[#F3CF92] text-[#134137]'
+                  : 'bg-white/10 text-white border border-white/30 hover:bg-white/20'
+              }`}
+            >
+              <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>Applications</span>
+              {newApplicationsCount > 0 && (
+                <span className="bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {newApplicationsCount > 9 ? '9+' : newApplicationsCount}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => setTab('general_apps')}
+              className={`flex items-center space-x-2 px-3 sm:px-5 py-2 rounded-lg font-bold transition-all text-sm sm:text-base whitespace-nowrap ${
+                tab === 'general_apps'
+                  ? 'bg-[#F3CF92] text-[#134137]'
+                  : 'bg-white/10 text-white border border-white/30 hover:bg-white/20'
+              }`}
+            >
+              <Users className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>General Applications</span>
+              {newGenAppsCount > 0 && (
+                <span className="bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {newGenAppsCount > 9 ? '9+' : newGenAppsCount}
+                </span>
+              )}
             </button>
           </div>
         </div>
@@ -2097,6 +2351,398 @@ export const Admin = () => {
                   </div>
                 )}
               </>
+            )}
+          </div>
+        )}
+
+        {tab === 'openings' && (
+          <div className="space-y-8">
+            {/* Add / Edit Opening Form */}
+            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-8">
+              <h2 className="text-xl sm:text-2xl font-bold text-[#134137] mb-6">
+                {editingOpeningId ? 'Edit Opening' : 'Add New Opening'}
+              </h2>
+              {openingMessage && (
+                <div className={`mb-4 p-3 rounded-lg text-sm ${openingMessage.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  {openingMessage.text}
+                </div>
+              )}
+              <form onSubmit={handleSaveOpening} className="space-y-5">
+                <p className="text-xs font-bold text-[#134137] uppercase tracking-widest pb-1 border-b border-gray-100">Basic Information</p>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[#134137] mb-2">Job Title *</label>
+                    <input type="text" required value={openingForm.title} onChange={(e) => setOpeningForm({ ...openingForm, title: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none" placeholder="e.g. Senior Property Consultant" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#134137] mb-2">Department</label>
+                    <input type="text" value={openingForm.department} onChange={(e) => setOpeningForm({ ...openingForm, department: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none" placeholder="e.g. Sales & Marketing" />
+                  </div>
+                </div>
+                <div className="grid sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[#134137] mb-2">Location</label>
+                    <input type="text" value={openingForm.location} onChange={(e) => setOpeningForm({ ...openingForm, location: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none" placeholder="e.g. Lagos, Nigeria" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#134137] mb-2">Employment Type</label>
+                    <select value={openingForm.type} onChange={(e) => setOpeningForm({ ...openingForm, type: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none bg-white">
+                      <option value="Full-time">Full-time</option>
+                      <option value="Part-time">Part-time</option>
+                      <option value="Contract">Contract</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#134137] mb-2">Experience Level</label>
+                    <select value={openingForm.experience_level} onChange={(e) => setOpeningForm({ ...openingForm, experience_level: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none bg-white">
+                      <option value="">Select level</option>
+                      <option value="Entry-Level">Entry-Level</option>
+                      <option value="Mid-Level">Mid-Level</option>
+                      <option value="Senior">Senior</option>
+                      <option value="Manager">Manager</option>
+                    </select>
+                  </div>
+                </div>
+
+                <p className="text-xs font-bold text-[#134137] uppercase tracking-widest pb-1 border-b border-gray-100 pt-2">Compensation</p>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[#134137] mb-2">Salary Range <span className="text-gray-400 font-normal">(Optional)</span></label>
+                    <input type="text" value={openingForm.salary_range} onChange={(e) => setOpeningForm({ ...openingForm, salary_range: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none" placeholder="e.g. ₦300,000 – ₦500,000/month" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#134137] mb-2">Commission Details <span className="text-gray-400 font-normal">(Optional)</span></label>
+                    <input type="text" value={openingForm.commission_details} onChange={(e) => setOpeningForm({ ...openingForm, commission_details: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none" placeholder="e.g. 3% on closed deals" />
+                  </div>
+                </div>
+
+                <p className="text-xs font-bold text-[#134137] uppercase tracking-widest pb-1 border-b border-gray-100 pt-2">Job Content</p>
+                <div>
+                  <label className="block text-sm font-medium text-[#134137] mb-2">Short Description <span className="text-gray-400 font-normal">(shown on job card)</span></label>
+                  <input type="text" value={openingForm.short_description} onChange={(e) => setOpeningForm({ ...openingForm, short_description: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none" placeholder="One-line summary of the role" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#134137] mb-2">Full Job Description</label>
+                  <textarea rows={4} value={openingForm.full_description} onChange={(e) => setOpeningForm({ ...openingForm, full_description: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none resize-none" placeholder="Detailed overview of the position..." />
+                </div>
+                <div className="grid sm:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[#134137] mb-2">Responsibilities <span className="text-gray-400 text-xs font-normal">(one per line)</span></label>
+                    <textarea rows={5} value={openingForm.responsibilities} onChange={(e) => setOpeningForm({ ...openingForm, responsibilities: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none resize-none text-sm" placeholder={"Manage property listings\nConduct inspections\nNegotiate deals"} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#134137] mb-2">Requirements <span className="text-gray-400 text-xs font-normal">(one per line)</span></label>
+                    <textarea rows={5} value={openingForm.requirements} onChange={(e) => setOpeningForm({ ...openingForm, requirements: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none resize-none text-sm" placeholder={"B.Sc/HND qualification\nMin 2 years experience\nExcellent communication"} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-[#134137] mb-2">Benefits <span className="text-gray-400 text-xs font-normal">(one per line)</span></label>
+                    <textarea rows={5} value={openingForm.benefits_list} onChange={(e) => setOpeningForm({ ...openingForm, benefits_list: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none resize-none text-sm" placeholder={"Attractive commission\nCareer advancement\nTraining & mentorship"} />
+                  </div>
+                </div>
+
+                <p className="text-xs font-bold text-[#134137] uppercase tracking-widest pb-1 border-b border-gray-100 pt-2">Application Settings</p>
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-[#134137] mb-2">Application Deadline <span className="text-gray-400 font-normal">(Optional)</span></label>
+                    <input type="date" value={openingForm.application_deadline} onChange={(e) => setOpeningForm({ ...openingForm, application_deadline: e.target.value })} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none" />
+                  </div>
+                  <div className="flex flex-col gap-2 pt-1">
+                    {([['is_active', 'Active (visible on careers page)'], ['accept_applications', 'Accept Applications'], ['featured', 'Featured Job'], ['allow_supporting_docs', 'Allow Supporting Documents']] as [string, string][]).map(([key, label]) => (
+                      <div key={key} className="flex items-center gap-2">
+                        <input type="checkbox" id={`of-${key}`} checked={openingForm[key as keyof typeof openingForm] as boolean} onChange={(e) => setOpeningForm({ ...openingForm, [key]: e.target.checked })} className="w-4 h-4 accent-[#134137]" />
+                        <label htmlFor={`of-${key}`} className="text-sm text-[#134137]">{label}</label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-2">
+                  <button type="submit" disabled={savingOpening} className="flex items-center gap-2 bg-[#134137] text-white px-6 py-2 rounded-lg font-bold hover:bg-[#0d2e24] transition-colors disabled:opacity-50">
+                    <Plus className="w-4 h-4" />
+                    {savingOpening ? 'Saving...' : editingOpeningId ? 'Update Opening' : 'Add Opening'}
+                  </button>
+                  {editingOpeningId && (
+                    <button type="button" onClick={() => { setEditingOpeningId(null); setOpeningForm({ title: '', department: '', location: '', type: 'Full-time', experience_level: '', salary_range: '', commission_details: '', short_description: '', full_description: '', responsibilities: '', requirements: '', benefits_list: '', is_active: true, accept_applications: true, application_deadline: '', featured: false, allow_supporting_docs: true }); setOpeningMessage(null); }} className="px-6 py-2 rounded-lg font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors">
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </form>
+            </div>
+
+            {/* Openings List */}
+            <div className="bg-white rounded-xl shadow-lg p-4 sm:p-8">
+              <h2 className="text-xl sm:text-2xl font-bold text-[#134137] mb-6">All Openings ({jobOpenings.length})</h2>
+              {jobOpenings.length === 0 ? (
+                <p className="text-gray-400 text-center py-8 italic">No job openings yet. Add one above.</p>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {jobOpenings.map(opening => (
+                    <div key={opening.id} className="py-4 flex flex-wrap gap-3 items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <span className="font-bold text-[#134137]">{opening.title}</span>
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${opening.type === 'Full-time' ? 'bg-green-100 text-green-700' : opening.type === 'Part-time' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
+                            {opening.type}
+                          </span>
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${opening.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                            {opening.is_active ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                        {(opening.department || opening.location) && (
+                          <p className="text-sm text-gray-500">{[opening.department, opening.location].filter(Boolean).join(' · ')}</p>
+                        )}
+                        {opening.description && (
+                          <p className="text-sm text-gray-500 mt-1 line-clamp-2">{opening.description}</p>
+                        )}
+                      </div>
+                      <div className="flex gap-2 flex-shrink-0">
+                        <button
+                          onClick={() => handleEditOpening(opening)}
+                          className="p-2 text-[#134137] hover:bg-[#134137]/10 rounded-lg transition-colors"
+                          title="Edit"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDuplicateOpening(opening)}
+                          className="p-2 text-blue-500 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Duplicate"
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                        {opening.accept_applications && (
+                          <button
+                            onClick={() => handleCloseApplications(opening.id)}
+                            className="px-2 py-1 text-xs font-semibold text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                            title="Close Applications"
+                          >
+                            Close Apps
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDeleteOpening(opening.id)}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {tab === 'applications' && (
+          <div className="bg-white rounded-xl shadow-lg p-4 sm:p-8">
+            <div className="flex flex-wrap gap-4 items-center justify-between mb-6">
+              <h2 className="text-xl sm:text-2xl font-bold text-[#134137]">
+                Job Applications ({jobApplications.length})
+              </h2>
+              <select
+                value={applicationFilter}
+                onChange={(e) => setApplicationFilter(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none bg-white"
+              >
+                <option value="all">All</option>
+                <option value="new">New</option>
+                <option value="reviewing">Under Review</option>
+                <option value="shortlisted">Shortlisted</option>
+                <option value="interview_scheduled">Interview Scheduled</option>
+                <option value="accepted">Accepted</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+
+            {loadingApplications ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />)}
+              </div>
+            ) : jobApplications.filter(a => applicationFilter === 'all' || a.status === applicationFilter).length === 0 ? (
+              <p className="text-gray-400 text-center py-12 italic">No applications found.</p>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {jobApplications
+                  .filter(a => applicationFilter === 'all' || a.status === applicationFilter)
+                  .map(app => (
+                    <div key={app.id} className={`py-4 ${!app.read ? 'bg-[#F3CF92]/10' : ''}`}>
+                      <div
+                        className="flex flex-wrap gap-3 items-start justify-between cursor-pointer"
+                        onClick={() => {
+                          if (!app.read) handleMarkApplicationRead(app.id);
+                          setExpandedApplicationId(prev => prev === app.id ? null : app.id);
+                        }}
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex flex-wrap items-center gap-2 mb-1">
+                            {!app.read && <span className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0" />}
+                            <span className="font-bold text-[#134137]">{app.name}</span>
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                              app.status === 'new' ? 'bg-blue-100 text-blue-700' :
+                              app.status === 'reviewing' ? 'bg-yellow-100 text-yellow-700' :
+                              app.status === 'shortlisted' ? 'bg-green-100 text-green-700' :
+                              'bg-red-100 text-red-700'
+                            }`}>
+                              {app.status.charAt(0).toUpperCase() + app.status.slice(1)}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-500">
+                            {app.position} · {app.email}
+                            {app.years_experience != null && ` · ${app.years_experience} yr${app.years_experience !== 1 ? 's' : ''} exp`}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-0.5">{new Date(app.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                        </div>
+                        <div className="flex-shrink-0 text-gray-400">
+                          {expandedApplicationId === app.id ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                        </div>
+                      </div>
+
+                      {expandedApplicationId === app.id && (
+                        <div className="mt-4 bg-gray-50 rounded-xl p-4 space-y-4">
+                          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
+                            <div>
+                              <p className="font-semibold text-[#134137] mb-1">Contact</p>
+                              <p className="text-gray-700">{app.email}</p>
+                              <p className="text-gray-700">{app.phone}</p>
+                              {app.address && <p className="text-gray-500 text-xs mt-0.5">{app.address}</p>}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-[#134137] mb-1">Professional</p>
+                              {app.years_experience != null && <p className="text-gray-600">{app.years_experience} yr{app.years_experience !== 1 ? 's' : ''} experience</p>}
+                              {app.linkedin_url && <a href={app.linkedin_url} target="_blank" rel="noopener noreferrer" className="block text-[#134137] hover:underline text-xs truncate mt-0.5">LinkedIn</a>}
+                              {app.portfolio_url && <a href={app.portfolio_url} target="_blank" rel="noopener noreferrer" className="block text-[#134137] hover:underline text-xs truncate mt-0.5">Portfolio</a>}
+                            </div>
+                            {app.cover_letter && (
+                              <div>
+                                <p className="font-semibold text-[#134137] mb-1">Cover Letter (text)</p>
+                                <p className="text-gray-600 whitespace-pre-wrap leading-relaxed text-xs">{app.cover_letter}</p>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-200">
+                            <button onClick={() => handleDownloadResume(app.resume_url, app.name, 'CV')} className="flex items-center gap-2 bg-[#134137] text-white px-4 py-2 rounded-lg font-semibold text-sm hover:bg-[#0d2e24] transition-colors">
+                              <Download className="w-4 h-4" />Download CV
+                            </button>
+                            {app.cover_letter_url && (
+                              <button onClick={() => handleDownloadResume(app.cover_letter_url!, app.name, 'CoverLetter')} className="flex items-center gap-2 bg-gray-200 text-[#134137] px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-300 transition-colors">
+                                <Download className="w-4 h-4" />Cover Letter
+                              </button>
+                            )}
+                            {app.supporting_doc_url && (
+                              <button onClick={() => handleDownloadResume(app.supporting_doc_url!, app.name, 'SupportingDoc')} className="flex items-center gap-2 bg-gray-200 text-[#134137] px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-300 transition-colors">
+                                <Download className="w-4 h-4" />Supporting Doc
+                              </button>
+                            )}
+                            <div className="flex items-center gap-2 ml-auto">
+                              <span className="text-sm font-medium text-gray-600">Status:</span>
+                              <select value={app.status} disabled={updatingApplicationId === app.id} onChange={(e) => handleUpdateApplicationStatus(app.id, e.target.value)} className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none bg-white disabled:opacity-50">
+                                <option value="new">New</option>
+                                <option value="reviewing">Under Review</option>
+                                <option value="shortlisted">Shortlisted</option>
+                                <option value="interview_scheduled">Interview Scheduled</option>
+                                <option value="accepted">Accepted</option>
+                                <option value="rejected">Rejected</option>
+                              </select>
+                              {updatingApplicationId === app.id && <span className="text-xs text-gray-400">Saving...</span>}
+                            </div>
+                          </div>
+
+                          <div className="pt-2 border-t border-gray-200">
+                            <p className="text-sm font-semibold text-[#134137] mb-2">Internal Notes <span className="text-gray-400 font-normal text-xs">(admin only)</span></p>
+                            <textarea
+                              rows={3}
+                              value={notesValues[app.id] ?? app.internal_notes ?? ''}
+                              onChange={(e) => setNotesValues(prev => ({ ...prev, [app.id]: e.target.value }))}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none resize-none"
+                              placeholder="Add internal notes about this applicant..."
+                            />
+                            <button
+                              onClick={() => handleSaveInternalNotes(app.id)}
+                              disabled={savingNotes === app.id}
+                              className="mt-2 px-4 py-1.5 bg-[#134137] text-white text-sm font-semibold rounded-lg hover:bg-[#0d2e24] transition-colors disabled:opacity-50"
+                            >
+                              {savingNotes === app.id ? 'Saving...' : 'Save Notes'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {tab === 'general_apps' && (
+          <div className="bg-white rounded-xl shadow-lg p-4 sm:p-8">
+            <h2 className="text-xl sm:text-2xl font-bold text-[#134137] mb-6">
+              General Applications ({generalApplications.length})
+            </h2>
+            {loadingGenApps ? (
+              <div className="space-y-3">{[1, 2, 3].map(i => <div key={i} className="h-16 bg-gray-100 rounded-xl animate-pulse" />)}</div>
+            ) : generalApplications.length === 0 ? (
+              <p className="text-gray-400 text-center py-12 italic">No general applications yet.</p>
+            ) : (
+              <div className="divide-y divide-gray-100">
+                {generalApplications.map(app => (
+                  <div key={app.id} className={`py-4 ${!app.read ? 'bg-[#F3CF92]/10' : ''}`}>
+                    <div
+                      className="flex flex-wrap gap-3 items-start justify-between cursor-pointer"
+                      onClick={() => {
+                        if (!app.read) handleMarkGenAppRead(app.id);
+                        setExpandedGenAppId(prev => prev === app.id ? null : app.id);
+                      }}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          {!app.read && <span className="w-2 h-2 bg-red-500 rounded-full flex-shrink-0" />}
+                          <span className="font-bold text-[#134137]">{app.name}</span>
+                        </div>
+                        <p className="text-sm text-gray-500">
+                          {app.email}
+                          {app.area_of_interest && ` · ${app.area_of_interest}`}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">{new Date(app.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                      </div>
+                      <div className="flex-shrink-0 text-gray-400">
+                        {expandedGenAppId === app.id ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                      </div>
+                    </div>
+                    {expandedGenAppId === app.id && (
+                      <div className="mt-4 bg-gray-50 rounded-xl p-4 space-y-3 text-sm">
+                        <div>
+                          <p className="font-semibold text-[#134137] mb-1">Contact</p>
+                          <p className="text-gray-700">{app.email}</p>
+                        </div>
+                        {app.area_of_interest && (
+                          <div>
+                            <p className="font-semibold text-[#134137] mb-1">Area of Interest</p>
+                            <p className="text-gray-600">{app.area_of_interest}</p>
+                          </div>
+                        )}
+                        {app.notes && (
+                          <div>
+                            <p className="font-semibold text-[#134137] mb-1">Notes</p>
+                            <p className="text-gray-600 whitespace-pre-wrap">{app.notes}</p>
+                          </div>
+                        )}
+                        <div className="pt-2 border-t border-gray-200">
+                          <button
+                            onClick={() => handleDownloadResume(app.resume_url, app.name, 'CV')}
+                            className="flex items-center gap-2 bg-[#134137] text-white px-4 py-2 rounded-lg font-semibold text-sm hover:bg-[#0d2e24] transition-colors"
+                          >
+                            <Download className="w-4 h-4" />Download CV
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         )}

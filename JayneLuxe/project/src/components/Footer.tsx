@@ -53,6 +53,11 @@ export const Footer = () => {
                 </a>
               </li>
               <li>
+                <a href="#/careers" className="text-gray-300 hover:text-[#F3CF92] transition-colors">
+                  Careers
+                </a>
+              </li>
+              <li>
                 <a href="#/contact" className="text-gray-300 hover:text-[#F3CF92] transition-colors">
                   Contact
                 </a>

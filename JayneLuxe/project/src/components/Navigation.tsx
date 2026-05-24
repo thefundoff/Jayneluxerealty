@@ -1,4 +1,4 @@
-﻿import { Home, Building2, Mail, Menu, Users, X } from 'lucide-react';
+﻿import { Home, Building2, Mail, Menu, Users, X, Briefcase } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 interface NavigationProps {
@@ -23,8 +23,9 @@ export const Navigation = ({ currentRoute }: NavigationProps) => {
   const navLinks = [
     { href: '#/', label: 'Home', icon: Home, route: 'home' },
     { href: '#/properties', label: 'Properties', icon: Building2, route: 'properties' },
-    { href: '#/contact', label: 'Contact', icon: Mail, route: 'contact' },
     { href: '#/about', label: 'About Us', icon: Users, route: 'about' },
+    { href: '#/careers', label: 'Careers', icon: Briefcase, route: 'careers' },
+    { href: '#/contact', label: 'Contact', icon: Mail, route: 'contact' },
   ];
 
   return (
