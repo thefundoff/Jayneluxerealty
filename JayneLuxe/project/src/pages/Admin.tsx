@@ -307,6 +307,18 @@ export const Admin = () => {
     }
   };
 
+  const handleViewFile = async (fileUrl: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('resumes')
+        .createSignedUrl(fileUrl, 60);
+      if (error || !data?.signedUrl) throw new Error('Could not generate view link.');
+      window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      alert('Failed to open file. Please try again.');
+    }
+  };
+
   const handleDownloadResume = async (resumeUrl: string, applicantName: string, label = 'CV') => {
     try {
       const { data, error } = await supabase.storage
@@ -1068,17 +1080,6 @@ export const Admin = () => {
               <span>All Properties</span>
             </button>
             <button
-              onClick={() => setTab('settings')}
-              className={`flex items-center space-x-2 px-3 sm:px-5 py-2 rounded-lg font-bold transition-all text-sm sm:text-base whitespace-nowrap ${
-                tab === 'settings'
-                  ? 'bg-[#F3CF92] text-[#134137]'
-                  : 'bg-white/10 text-white border border-white/30 hover:bg-white/20'
-              }`}
-            >
-              <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span>Settings</span>
-            </button>
-            <button
               onClick={() => setTab('slots')}
               className={`flex items-center space-x-2 px-3 sm:px-5 py-2 rounded-lg font-bold transition-all text-sm sm:text-base whitespace-nowrap ${
                 tab === 'slots'
@@ -1109,7 +1110,7 @@ export const Admin = () => {
               }`}
             >
               <FileText className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span>Applications</span>
+              <span>Job Applications</span>
               {newApplicationsCount > 0 && (
                 <span className="bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
                   {newApplicationsCount > 9 ? '9+' : newApplicationsCount}
@@ -1131,6 +1132,17 @@ export const Admin = () => {
                   {newGenAppsCount > 9 ? '9+' : newGenAppsCount}
                 </span>
               )}
+            </button>
+            <button
+              onClick={() => setTab('settings')}
+              className={`flex items-center space-x-2 px-3 sm:px-5 py-2 rounded-lg font-bold transition-all text-sm sm:text-base whitespace-nowrap ${
+                tab === 'settings'
+                  ? 'bg-[#F3CF92] text-[#134137]'
+                  : 'bg-white/10 text-white border border-white/30 hover:bg-white/20'
+              }`}
+            >
+              <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>Settings</span>
             </button>
           </div>
         </div>
@@ -2624,18 +2636,31 @@ export const Admin = () => {
                           </div>
 
                           <div className="flex flex-wrap gap-2 pt-2 border-t border-gray-200">
+                            <button onClick={() => handleViewFile(app.resume_url)} className="flex items-center gap-2 bg-white border border-[#134137] text-[#134137] px-4 py-2 rounded-lg font-semibold text-sm hover:bg-[#134137]/5 transition-colors">
+                              <Eye className="w-4 h-4" />View CV
+                            </button>
                             <button onClick={() => handleDownloadResume(app.resume_url, app.name, 'CV')} className="flex items-center gap-2 bg-[#134137] text-white px-4 py-2 rounded-lg font-semibold text-sm hover:bg-[#0d2e24] transition-colors">
                               <Download className="w-4 h-4" />Download CV
                             </button>
                             {app.cover_letter_url && (
-                              <button onClick={() => handleDownloadResume(app.cover_letter_url!, app.name, 'CoverLetter')} className="flex items-center gap-2 bg-gray-200 text-[#134137] px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-300 transition-colors">
-                                <Download className="w-4 h-4" />Cover Letter
-                              </button>
+                              <>
+                                <button onClick={() => handleViewFile(app.cover_letter_url!)} className="flex items-center gap-2 bg-white border border-gray-400 text-gray-600 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-50 transition-colors">
+                                  <Eye className="w-4 h-4" />View Cover Letter
+                                </button>
+                                <button onClick={() => handleDownloadResume(app.cover_letter_url!, app.name, 'CoverLetter')} className="flex items-center gap-2 bg-gray-200 text-[#134137] px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-300 transition-colors">
+                                  <Download className="w-4 h-4" />Download Cover Letter
+                                </button>
+                              </>
                             )}
                             {app.supporting_doc_url && (
-                              <button onClick={() => handleDownloadResume(app.supporting_doc_url!, app.name, 'SupportingDoc')} className="flex items-center gap-2 bg-gray-200 text-[#134137] px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-300 transition-colors">
-                                <Download className="w-4 h-4" />Supporting Doc
-                              </button>
+                              <>
+                                <button onClick={() => handleViewFile(app.supporting_doc_url!)} className="flex items-center gap-2 bg-white border border-gray-400 text-gray-600 px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-50 transition-colors">
+                                  <Eye className="w-4 h-4" />View Supporting Doc
+                                </button>
+                                <button onClick={() => handleDownloadResume(app.supporting_doc_url!, app.name, 'SupportingDoc')} className="flex items-center gap-2 bg-gray-200 text-[#134137] px-4 py-2 rounded-lg font-semibold text-sm hover:bg-gray-300 transition-colors">
+                                  <Download className="w-4 h-4" />Download Supporting Doc
+                                </button>
+                              </>
                             )}
                             <div className="flex items-center gap-2 ml-auto">
                               <span className="text-sm font-medium text-gray-600">Status:</span>
@@ -2730,7 +2755,13 @@ export const Admin = () => {
                             <p className="text-gray-600 whitespace-pre-wrap">{app.notes}</p>
                           </div>
                         )}
-                        <div className="pt-2 border-t border-gray-200">
+                        <div className="pt-2 border-t border-gray-200 flex flex-wrap gap-2">
+                          <button
+                            onClick={() => handleViewFile(app.resume_url)}
+                            className="flex items-center gap-2 bg-white border border-[#134137] text-[#134137] px-4 py-2 rounded-lg font-semibold text-sm hover:bg-[#134137]/5 transition-colors"
+                          >
+                            <Eye className="w-4 h-4" />View CV
+                          </button>
                           <button
                             onClick={() => handleDownloadResume(app.resume_url, app.name, 'CV')}
                             className="flex items-center gap-2 bg-[#134137] text-white px-4 py-2 rounded-lg font-semibold text-sm hover:bg-[#0d2e24] transition-colors"

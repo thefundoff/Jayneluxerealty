@@ -24,8 +24,8 @@ export const Navigation = ({ currentRoute }: NavigationProps) => {
     { href: '#/', label: 'Home', icon: Home, route: 'home' },
     { href: '#/properties', label: 'Properties', icon: Building2, route: 'properties' },
     { href: '#/about', label: 'About Us', icon: Users, route: 'about' },
-    { href: '#/careers', label: 'Careers', icon: Briefcase, route: 'careers' },
     { href: '#/contact', label: 'Contact', icon: Mail, route: 'contact' },
+    { href: '#/careers', label: 'Careers', icon: Briefcase, route: 'careers' },
   ];
 
   return (
