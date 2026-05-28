@@ -356,6 +356,16 @@ export const Admin = () => {
     }
   };
 
+  const handleDeleteJobApplication = async (id: string, name: string) => {
+    if (!window.confirm(`Delete application from ${name}? This cannot be undone.`)) return;
+    const { error } = await supabase.from('job_applications').delete().eq('id', id);
+    if (!error) {
+      setJobApplications(prev => prev.filter(a => a.id !== id));
+      setNewApplicationsCount(prev => Math.max(0, prev - 1));
+      if (expandedApplicationId === id) setExpandedApplicationId(null);
+    }
+  };
+
   const handleSaveInternalNotes = async (appId: string) => {
     setSavingNotes(appId);
     const notes = notesValues[appId] ?? '';
@@ -2685,13 +2695,21 @@ export const Admin = () => {
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none resize-none"
                               placeholder="Add internal notes about this applicant..."
                             />
-                            <button
-                              onClick={() => handleSaveInternalNotes(app.id)}
-                              disabled={savingNotes === app.id}
-                              className="mt-2 px-4 py-1.5 bg-[#134137] text-white text-sm font-semibold rounded-lg hover:bg-[#0d2e24] transition-colors disabled:opacity-50"
-                            >
-                              {savingNotes === app.id ? 'Saving...' : 'Save Notes'}
-                            </button>
+                            <div className="flex items-center justify-between mt-2">
+                              <button
+                                onClick={() => handleSaveInternalNotes(app.id)}
+                                disabled={savingNotes === app.id}
+                                className="px-4 py-1.5 bg-[#134137] text-white text-sm font-semibold rounded-lg hover:bg-[#0d2e24] transition-colors disabled:opacity-50"
+                              >
+                                {savingNotes === app.id ? 'Saving...' : 'Save Notes'}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteJobApplication(app.id, app.name)}
+                                className="flex items-center gap-1.5 px-4 py-1.5 bg-red-50 text-red-600 border border-red-200 text-sm font-semibold rounded-lg hover:bg-red-100 transition-colors"
+                              >
+                                <Trash2 className="w-4 h-4" />Delete Application
+                              </button>
+                            </div>
                           </div>
                         </div>
                       )}
