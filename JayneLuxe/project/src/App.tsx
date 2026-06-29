@@ -8,6 +8,7 @@ import { Contact } from './pages/Contact';
 import { Admin } from './pages/Admin';
 import { About } from './pages/About';
 import { Careers } from './pages/Careers';
+import { Prospect } from './pages/Prospect';
 
 function App() {
   const { currentRoute, params, navigate } = useRouter();
@@ -32,6 +33,7 @@ function App() {
             admin: <Admin />,
             about: <About />,
             careers: <Careers />,
+            prospect: <Prospect />,
           }}
         </Router>
       </div>

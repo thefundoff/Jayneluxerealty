@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Lock, LogOut, Plus, List, X, Upload, CreditCard as Edit2, Trash2, Eye, EyeOff, Settings, Calendar, Briefcase, FileText, ChevronDown, ChevronUp, Download, Users } from 'lucide-react';
+import { Lock, LogOut, Plus, List, X, Upload, CreditCard as Edit2, Trash2, Eye, EyeOff, Settings, Calendar, Briefcase, FileText, ChevronDown, ChevronUp, Download, Users, ClipboardList, Inbox, MessageSquare, Share2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import type { Database, PropertyImage, JobOpening, JobApplication, GeneralApplication } from '../lib/database.types';
+import { FormBuilder } from './admin/FormBuilder';
+import { ProspectResponses } from './admin/ProspectResponses';
+import { Reviews } from './admin/Reviews';
+import { SocialSettings } from './admin/SocialSettings';
 
 interface AdminAuthState {
   isAuthenticated: boolean;
@@ -57,7 +61,7 @@ export const Admin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [tab, setTab] = useState<'add' | 'list' | 'settings' | 'slots' | 'openings' | 'applications' | 'general_apps'>('add');
+  const [tab, setTab] = useState<'add' | 'list' | 'settings' | 'slots' | 'openings' | 'applications' | 'general_apps' | 'form_builder' | 'prospect_responses' | 'prospect_reviews' | 'social_settings'>('add');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -1153,6 +1157,50 @@ export const Admin = () => {
             >
               <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
               <span>Settings</span>
+            </button>
+            <button
+              onClick={() => setTab('form_builder')}
+              className={`flex items-center space-x-2 px-3 sm:px-5 py-2 rounded-lg font-bold transition-all text-sm sm:text-base whitespace-nowrap ${
+                tab === 'form_builder'
+                  ? 'bg-[#F3CF92] text-[#134137]'
+                  : 'bg-white/10 text-white border border-white/30 hover:bg-white/20'
+              }`}
+            >
+              <ClipboardList className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>Form Builder</span>
+            </button>
+            <button
+              onClick={() => setTab('prospect_responses')}
+              className={`flex items-center space-x-2 px-3 sm:px-5 py-2 rounded-lg font-bold transition-all text-sm sm:text-base whitespace-nowrap ${
+                tab === 'prospect_responses'
+                  ? 'bg-[#F3CF92] text-[#134137]'
+                  : 'bg-white/10 text-white border border-white/30 hover:bg-white/20'
+              }`}
+            >
+              <Inbox className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>Prospect Responses</span>
+            </button>
+            <button
+              onClick={() => setTab('prospect_reviews')}
+              className={`flex items-center space-x-2 px-3 sm:px-5 py-2 rounded-lg font-bold transition-all text-sm sm:text-base whitespace-nowrap ${
+                tab === 'prospect_reviews'
+                  ? 'bg-[#F3CF92] text-[#134137]'
+                  : 'bg-white/10 text-white border border-white/30 hover:bg-white/20'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>Customer Reviews</span>
+            </button>
+            <button
+              onClick={() => setTab('social_settings')}
+              className={`flex items-center space-x-2 px-3 sm:px-5 py-2 rounded-lg font-bold transition-all text-sm sm:text-base whitespace-nowrap ${
+                tab === 'social_settings'
+                  ? 'bg-[#F3CF92] text-[#134137]'
+                  : 'bg-white/10 text-white border border-white/30 hover:bg-white/20'
+              }`}
+            >
+              <Share2 className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span>Social Media</span>
             </button>
           </div>
         </div>
@@ -2795,6 +2843,11 @@ export const Admin = () => {
             )}
           </div>
         )}
+
+        {tab === 'form_builder' && <FormBuilder />}
+        {tab === 'prospect_responses' && <ProspectResponses />}
+        {tab === 'prospect_reviews' && <Reviews />}
+        {tab === 'social_settings' && <SocialSettings />}
 
         {deleteConfirm && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">

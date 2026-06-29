@@ -176,6 +176,133 @@ export interface Database {
           created_at?: string
         }
       }
+      prospect_form_fields: {
+        Row: {
+          id: string
+          label: string
+          field_type: string
+          field_role: string | null
+          options: string[]
+          placeholder: string | null
+          is_required: boolean
+          is_enabled: boolean
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          label: string
+          field_type?: string
+          field_role?: string | null
+          options?: string[]
+          placeholder?: string | null
+          is_required?: boolean
+          is_enabled?: boolean
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          label?: string
+          field_type?: string
+          field_role?: string | null
+          options?: string[]
+          placeholder?: string | null
+          is_required?: boolean
+          is_enabled?: boolean
+          sort_order?: number
+          created_at?: string
+        }
+      }
+      prospect_submissions: {
+        Row: {
+          id: string
+          full_name: string | null
+          phone: string | null
+          email: string | null
+          answers: Record<string, string | string[]>
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          full_name?: string | null
+          phone?: string | null
+          email?: string | null
+          answers?: Record<string, string | string[]>
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          full_name?: string | null
+          phone?: string | null
+          email?: string | null
+          answers?: Record<string, string | string[]>
+          created_at?: string
+        }
+      }
+      prospect_reviews: {
+        Row: {
+          id: string
+          name: string | null
+          rating: number | null
+          review: string
+          status: string
+          is_featured: boolean
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name?: string | null
+          rating?: number | null
+          review: string
+          status?: string
+          is_featured?: boolean
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string | null
+          rating?: number | null
+          review?: string
+          status?: string
+          is_featured?: boolean
+          created_at?: string
+        }
+      }
+      prospect_social_links: {
+        Row: {
+          platform: string
+          url: string
+          is_enabled: boolean
+          sort_order: number
+        }
+        Insert: {
+          platform: string
+          url?: string
+          is_enabled?: boolean
+          sort_order?: number
+        }
+        Update: {
+          platform?: string
+          url?: string
+          is_enabled?: boolean
+          sort_order?: number
+        }
+      }
+      prospect_settings: {
+        Row: {
+          key: string
+          value: Json
+        }
+        Insert: {
+          key: string
+          value?: Json
+        }
+        Update: {
+          key?: string
+          value?: Json
+        }
+      }
     }
   }
 }
@@ -246,3 +373,20 @@ export interface GeneralApplication {
   created_at: string;
   read: boolean;
 }
+
+export type ProspectFieldType =
+  | 'short_text'
+  | 'long_text'
+  | 'email'
+  | 'phone'
+  | 'number'
+  | 'dropdown'
+  | 'radio'
+  | 'checkbox'
+  | 'date';
+
+export type ProspectFormField = Database['public']['Tables']['prospect_form_fields']['Row'];
+export type ProspectSubmission = Database['public']['Tables']['prospect_submissions']['Row'];
+export type ProspectReview = Database['public']['Tables']['prospect_reviews']['Row'];
+export type ProspectSocialLink = Database['public']['Tables']['prospect_social_links']['Row'];
+export type ProspectSetting = Database['public']['Tables']['prospect_settings']['Row'];
