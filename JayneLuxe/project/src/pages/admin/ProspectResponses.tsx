@@ -1,10 +1,29 @@
 import { useState, useEffect } from 'react';
-import { Search, Trash2, Eye, Download, X } from 'lucide-react';
+import { Search, Trash2, Eye, Download, X, MessageCircle } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { ProspectSubmission, ProspectFormField } from '../../lib/database.types';
 
 const formatDate = (iso: string) =>
   new Date(iso).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+// Normalise a phone number to the digits-only, country-coded form wa.me expects.
+// Local Nigerian numbers (e.g. 0803…) get the 234 country code; anything already
+// carrying a country code (with or without a leading +) is kept as-is.
+const toWhatsAppNumber = (phone: string | null | undefined): string | null => {
+  if (!phone) return null;
+  let digits = phone.replace(/\D/g, '');
+  if (digits.startsWith('00')) digits = digits.slice(2); // international 00 prefix
+  if (digits.startsWith('0')) digits = '234' + digits.slice(1); // local NG number
+  return digits.length >= 10 ? digits : null;
+};
+
+const waLink = (phone: string | null | undefined, name?: string | null): string | null => {
+  const number = toWhatsAppNumber(phone);
+  if (!number) return null;
+  const greeting = name?.trim() ? `Hello ${name.trim().split(' ')[0]}, ` : 'Hello, ';
+  const message = `${greeting}thank you for your interest in Jayne Luxe Realty. `;
+  return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+};
 
 const answerToText = (value: string | string[] | undefined): string => {
   if (value === undefined || value === null) return '';
@@ -124,6 +143,19 @@ export const ProspectResponses = () => {
                   <td className="py-3 pr-4 text-gray-500 whitespace-nowrap">{formatDate(s.created_at)}</td>
                   <td className="py-3">
                     <div className="flex justify-end gap-2">
+                      {waLink(s.phone, s.full_name) ? (
+                        <a
+                          href={waLink(s.phone, s.full_name)!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-gray-500 hover:text-green-600"
+                          title="Message on WhatsApp"
+                        >
+                          <MessageCircle className="w-5 h-5" />
+                        </a>
+                      ) : (
+                        <MessageCircle className="w-5 h-5 text-gray-200" aria-hidden="true" />
+                      )}
                       <button onClick={() => setViewing(s)} className="text-gray-500 hover:text-[#134137]" title="View">
                         <Eye className="w-5 h-5" />
                       </button>
@@ -150,6 +182,17 @@ export const ProspectResponses = () => {
             </div>
             <div className="p-5 space-y-4">
               <p className="text-xs text-gray-400">Submitted {formatDate(viewing.created_at)}</p>
+              {waLink(viewing.phone, viewing.full_name) && (
+                <a
+                  href={waLink(viewing.phone, viewing.full_name)!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 bg-[#25D366] text-white px-4 py-2.5 rounded-lg font-bold hover:bg-[#1da851] transition-colors"
+                >
+                  <MessageCircle className="w-5 h-5" />
+                  <span>Message on WhatsApp</span>
+                </a>
+              )}
               {fields.map((f) => {
                 const ans = answerToText(viewing.answers?.[f.id]);
                 if (ans === '') return null;

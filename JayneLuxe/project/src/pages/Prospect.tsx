@@ -46,6 +46,13 @@ const SocialIcon = ({ platform }: { platform: string }) => {
 const inputClass =
   'w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#F3CF92] focus:border-transparent outline-none transition-all';
 
+// Sentinel value for the "Other" entry in a <select>.
+const OTHER_VALUE = '__other__';
+
+// How a custom "Other" answer is stored/displayed to the admin.
+const OTHER_PREFIX = 'Other: ';
+const labelOther = (v: string) => (v.trim() ? `${OTHER_PREFIX}${v.trim()}` : '');
+
 export const Prospect = () => {
   const [fields, setFields] = useState<ProspectFormField[]>([]);
   const [socials, setSocials] = useState<ProspectSocialLink[]>([]);
@@ -53,6 +60,11 @@ export const Prospect = () => {
   const [loading, setLoading] = useState(true);
 
   const [answers, setAnswers] = useState<Record<string, AnswerValue>>({});
+  // Per-field "Other" state: whether the Other choice is active, and its typed text.
+  // The typed text is written straight into `answers` so it reaches the admin as a
+  // normal answer; these maps just drive the UI and remember text across toggles.
+  const [otherOn, setOtherOn] = useState<Record<string, boolean>>({});
+  const [otherText, setOtherText] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState('');
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formSubmitted, setFormSubmitted] = useState(false);
@@ -113,6 +125,45 @@ export const Prospect = () => {
     });
   };
 
+  // --- "Other" option handlers (radio / dropdown store the text as the answer;
+  //     checkbox appends/removes the text within the selected-options array) ---
+  const chooseOther = (id: string) => {
+    setOtherOn((p) => ({ ...p, [id]: true }));
+    setAnswer(id, labelOther(otherText[id] || ''));
+  };
+
+  const chooseFixed = (id: string, opt: string) => {
+    setOtherOn((p) => ({ ...p, [id]: false }));
+    setAnswer(id, opt);
+  };
+
+  const setSingleOtherText = (id: string, v: string) => {
+    setOtherText((p) => ({ ...p, [id]: v }));
+    setAnswer(id, labelOther(v));
+  };
+
+  const toggleCheckboxOther = (id: string) => {
+    const on = !!otherOn[id];
+    const labeled = labelOther(otherText[id] || '');
+    setOtherOn((p) => ({ ...p, [id]: !on }));
+    setAnswers((prev) => {
+      const arr = Array.isArray(prev[id]) ? (prev[id] as string[]) : [];
+      if (on) return { ...prev, [id]: arr.filter((o) => o !== labeled) }; // turning Other off → drop custom text
+      return labeled && !arr.includes(labeled) ? { ...prev, [id]: [...arr, labeled] } : prev; // turning on → restore
+    });
+  };
+
+  const setCheckboxOtherText = (id: string, v: string) => {
+    const oldLabeled = labelOther(otherText[id] || '');
+    const newLabeled = labelOther(v);
+    setOtherText((p) => ({ ...p, [id]: v }));
+    setAnswers((prev) => {
+      const arr = Array.isArray(prev[id]) ? (prev[id] as string[]) : [];
+      const cleaned = oldLabeled ? arr.filter((o) => o !== oldLabeled) : arr;
+      return { ...prev, [id]: newLabeled ? [...cleaned, newLabeled] : cleaned };
+    });
+  };
+
   const isAnswered = (field: ProspectFormField): boolean => {
     const v = answers[field.id];
     if (field.field_type === 'checkbox') return Array.isArray(v) && v.length > 0;
@@ -158,6 +209,8 @@ export const Prospect = () => {
     }
     setFormSubmitted(true);
     setAnswers({});
+    setOtherOn({});
+    setOtherText({});
   };
 
   const handleReviewSubmit = async (e: React.FormEvent) => {
@@ -207,21 +260,41 @@ export const Prospect = () => {
             />
           </div>
         );
-      case 'dropdown':
+      case 'dropdown': {
+        const isOther = !!otherOn[field.id];
         return (
           <div key={field.id}>
             {labelEl}
-            <select id={field.id} value={stringValue} onChange={(e) => setAnswer(field.id, e.target.value)} className={inputClass}>
+            <select
+              id={field.id}
+              value={isOther ? OTHER_VALUE : field.options.includes(stringValue) ? stringValue : ''}
+              onChange={(e) =>
+                e.target.value === OTHER_VALUE ? chooseOther(field.id) : chooseFixed(field.id, e.target.value)
+              }
+              className={inputClass}
+            >
               <option value="">Select an option…</option>
               {field.options.map((opt) => (
                 <option key={opt} value={opt}>
                   {opt}
                 </option>
               ))}
+              <option value={OTHER_VALUE}>Other…</option>
             </select>
+            {isOther && (
+              <input
+                type="text"
+                value={otherText[field.id] || ''}
+                placeholder="Please specify…"
+                onChange={(e) => setSingleOtherText(field.id, e.target.value)}
+                className={`${inputClass} mt-2`}
+              />
+            )}
           </div>
         );
-      case 'radio':
+      }
+      case 'radio': {
+        const isOther = !!otherOn[field.id];
         return (
           <div key={field.id}>
             {labelEl}
@@ -232,18 +305,39 @@ export const Prospect = () => {
                     type="radio"
                     name={field.id}
                     value={opt}
-                    checked={stringValue === opt}
-                    onChange={() => setAnswer(field.id, opt)}
+                    checked={!isOther && stringValue === opt}
+                    onChange={() => chooseFixed(field.id, opt)}
                     className="w-4 h-4 text-[#134137] focus:ring-[#F3CF92]"
                   />
                   <span className="text-gray-700">{opt}</span>
                 </label>
               ))}
+              <label className="flex items-center space-x-3 cursor-pointer">
+                <input
+                  type="radio"
+                  name={field.id}
+                  checked={isOther}
+                  onChange={() => chooseOther(field.id)}
+                  className="w-4 h-4 text-[#134137] focus:ring-[#F3CF92]"
+                />
+                <span className="text-gray-700">Other</span>
+              </label>
             </div>
+            {isOther && (
+              <input
+                type="text"
+                value={otherText[field.id] || ''}
+                placeholder="Please specify…"
+                onChange={(e) => setSingleOtherText(field.id, e.target.value)}
+                className={`${inputClass} mt-2`}
+              />
+            )}
           </div>
         );
+      }
       case 'checkbox': {
         const arr = Array.isArray(value) ? value : [];
+        const isOther = !!otherOn[field.id];
         return (
           <div key={field.id}>
             {labelEl}
@@ -259,7 +353,25 @@ export const Prospect = () => {
                   <span className="text-gray-700">{opt}</span>
                 </label>
               ))}
+              <label className="flex items-center space-x-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isOther}
+                  onChange={() => toggleCheckboxOther(field.id)}
+                  className="w-4 h-4 rounded text-[#134137] focus:ring-[#F3CF92]"
+                />
+                <span className="text-gray-700">Other</span>
+              </label>
             </div>
+            {isOther && (
+              <input
+                type="text"
+                value={otherText[field.id] || ''}
+                placeholder="Please specify…"
+                onChange={(e) => setCheckboxOtherText(field.id, e.target.value)}
+                className={`${inputClass} mt-2`}
+              />
+            )}
           </div>
         );
       }
