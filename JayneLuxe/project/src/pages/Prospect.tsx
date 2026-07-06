@@ -53,6 +53,25 @@ const OTHER_VALUE = '__other__';
 const OTHER_PREFIX = 'Other: ';
 const labelOther = (v: string) => (v.trim() ? `${OTHER_PREFIX}${v.trim()}` : '');
 
+// Strip HTML/script from free-text so nothing executable is ever stored.
+// (React already escapes on render; this is defence-in-depth at the source and
+// keeps stored data clean for the admin dashboard and CSV export.)
+const sanitizeText = (input: string): string =>
+  input
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // whole <script> blocks
+    .replace(/<\/?[a-z][\s\S]*?>/gi, '') // any remaining HTML tags
+    .replace(/\son\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '') // stray event handlers
+    .replace(/javascript:/gi, '') // javascript: URIs
+    .trim();
+
+const sanitizeAnswers = (raw: Record<string, string | string[]>): Record<string, string | string[]> => {
+  const out: Record<string, string | string[]> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    out[k] = Array.isArray(v) ? v.map(sanitizeText) : sanitizeText(v);
+  }
+  return out;
+};
+
 export const Prospect = () => {
   const [fields, setFields] = useState<ProspectFormField[]>([]);
   const [socials, setSocials] = useState<ProspectSocialLink[]>([]);
@@ -164,8 +183,8 @@ export const Prospect = () => {
     });
   };
 
-  const isAnswered = (field: ProspectFormField): boolean => {
-    const v = answers[field.id];
+  const isAnswered = (field: ProspectFormField, map: Record<string, AnswerValue>): boolean => {
+    const v = map[field.id];
     if (field.field_type === 'checkbox') return Array.isArray(v) && v.length > 0;
     return typeof v === 'string' && v.trim() !== '';
   };
@@ -179,7 +198,12 @@ export const Prospect = () => {
       return;
     }
 
-    const missing = fields.find((f) => f.is_required && !isAnswered(f));
+    // Sanitize first, then validate/store the cleaned values — so input that is
+    // nothing but markup (e.g. "<script>…") collapses to empty and fails a
+    // required-field check rather than being persisted.
+    const cleanAnswers = sanitizeAnswers(answers);
+
+    const missing = fields.find((f) => f.is_required && !isAnswered(f, cleanAnswers));
     if (missing) {
       setFormError(`Please complete the required field: "${missing.label}".`);
       return;
@@ -191,7 +215,7 @@ export const Prospect = () => {
     const roleValue = (role: string): string | null => {
       const field = fields.find((f) => f.field_role === role);
       if (!field) return null;
-      const v = answers[field.id];
+      const v = cleanAnswers[field.id];
       return typeof v === 'string' && v.trim() !== '' ? v.trim() : null;
     };
 
@@ -199,7 +223,7 @@ export const Prospect = () => {
       full_name: roleValue('name'),
       phone: roleValue('phone'),
       email: roleValue('email'),
-      answers,
+      answers: cleanAnswers,
     });
 
     setFormSubmitting(false);
@@ -215,16 +239,17 @@ export const Prospect = () => {
 
   const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (review.review.trim() === '') {
+    const cleanReview = sanitizeText(review.review);
+    if (cleanReview === '') {
       setReviewError('Please write your review before submitting.');
       return;
     }
     setReviewError('');
     setReviewSubmitting(true);
     const { error } = await supabase.from('prospect_reviews').insert({
-      name: review.name.trim() || null,
+      name: sanitizeText(review.name) || null,
       rating: review.rating > 0 ? review.rating : null,
-      review: review.review.trim(),
+      review: cleanReview,
     });
     setReviewSubmitting(false);
     if (error) {

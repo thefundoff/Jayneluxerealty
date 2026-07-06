@@ -31,8 +31,12 @@ const answerToText = (value: string | string[] | undefined): string => {
 };
 
 // RFC-4180-ish CSV escaping so the file opens cleanly in Excel.
+// Also guards against CSV/formula injection: a cell beginning with =, +, -, @,
+// or a tab/CR is prefixed with a single quote so spreadsheet apps treat it as
+// text instead of executing it as a formula.
 const csvCell = (value: string): string => {
-  const v = value ?? '';
+  let v = value ?? '';
+  if (/^[=+\-@\t\r]/.test(v)) v = `'${v}`;
   return /[",\n\r]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
 };
 
